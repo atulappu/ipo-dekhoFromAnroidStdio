@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using IpoDekho.Backend.Data;
+using IpoDekho.Backend.DTOs;
+using IpoDekho.Backend.Services;
 
 namespace IpoDekho.Backend.Controllers
 {
@@ -9,46 +11,136 @@ namespace IpoDekho.Backend.Controllers
     public class IposController : ControllerBase
     {
         private readonly IpoDbContext _context;
+        private readonly IIpoScraperService _scraperService;
 
-        public IposController(IpoDbContext context)
+        public IposController(IpoDbContext context, IIpoScraperService scraperService)
         {
             _context = context;
+            _scraperService = scraperService;
         }
 
+        /// <summary>
+        /// Get list of IPOs with optional status (OPEN, UPCOMING, ALLOTMENT_AVAILABLE, LISTED) and type (MAINBOARD, SME) filters
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetIpos([FromQuery] string? status)
+        public async Task<IActionResult> GetIpos(
+            [FromQuery] string? status,
+            [FromQuery] string? type,
+            [FromQuery] string? search)
         {
             var query = _context.Ipos.AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(status) && status != "ALL")
+            if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL")
             {
                 query = query.Where(i => i.Status == status);
             }
 
-            var list = await query.OrderByDescending(i => i.OpenDate).ToListAsync();
+            if (!string.IsNullOrWhiteSpace(type) && type.ToUpper() != "ALL")
+            {
+                query = query.Where(i => i.Type == type);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(i => i.Name.ToLower().Contains(term) || (i.Symbol != null && i.Symbol.ToLower().Contains(term)));
+            }
+
+            var list = await query
+                .OrderByDescending(i => i.OpenDate)
+                .Select(i => new IpoDto
+                {
+                    Id = i.Id,
+                    Name = i.Name,
+                    Symbol = i.Symbol,
+                    Type = i.Type,
+                    Status = i.Status,
+                    PriceBandMin = i.PriceBandMin,
+                    PriceBandMax = i.PriceBandMax,
+                    LotSize = i.LotSize,
+                    IssueSizeCr = i.IssueSizeCr,
+                    CurrentGmp = i.CurrentGmp,
+                    OpenDate = i.OpenDate,
+                    CloseDate = i.CloseDate,
+                    AllotmentDate = i.AllotmentDate,
+                    ListingDate = i.ListingDate,
+                    RegistrarName = i.RegistrarName,
+                    RegistrarUrl = i.RegistrarUrl,
+                    IsAllotmentOut = i.IsAllotmentOut,
+                    UpdatedAt = i.UpdatedAt
+                })
+                .ToListAsync();
+
             return Ok(list);
         }
 
+        /// <summary>
+        /// Get single IPO details including GMP history and live subscription numbers
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetIpoById(string id)
         {
             var ipo = await _context.Ipos.FirstOrDefaultAsync(i => i.Id == id);
-            if (ipo == null) return NotFound(new { message = "IPO not found" });
+            if (ipo == null) return NotFound(new { message = $"IPO with id '{id}' not found." });
 
-            var gmpHistory = await _context.GmpHistory
+            var gmpTicks = await _context.GmpHistory
                 .Where(g => g.IpoId == id)
                 .OrderBy(g => g.RecordedAt)
+                .Select(g => new GmpTickDto
+                {
+                    Gmp = g.Gmp,
+                    GainPercent = g.GainPercent,
+                    RecordedAt = g.RecordedAt
+                })
                 .ToListAsync();
 
-            var subscription = await _context.Subscriptions
+            var sub = await _context.Subscriptions
                 .FirstOrDefaultAsync(s => s.IpoId == id);
 
-            return Ok(new
+            var detail = new IpoDetailDto
             {
-                ipo,
-                gmpHistory,
-                subscription
-            });
+                Id = ipo.Id,
+                Name = ipo.Name,
+                Symbol = ipo.Symbol,
+                Type = ipo.Type,
+                Status = ipo.Status,
+                PriceBandMin = ipo.PriceBandMin,
+                PriceBandMax = ipo.PriceBandMax,
+                LotSize = ipo.LotSize,
+                IssueSizeCr = ipo.IssueSizeCr,
+                CurrentGmp = ipo.CurrentGmp,
+                OpenDate = ipo.OpenDate,
+                CloseDate = ipo.CloseDate,
+                AllotmentDate = ipo.AllotmentDate,
+                ListingDate = ipo.ListingDate,
+                RegistrarName = ipo.RegistrarName,
+                RegistrarUrl = ipo.RegistrarUrl,
+                IsAllotmentOut = ipo.IsAllotmentOut,
+                UpdatedAt = ipo.UpdatedAt,
+                GmpHistory = gmpTicks,
+                Subscription = sub == null ? null : new SubscriptionDto
+                {
+                    Qib = sub.Qib,
+                    Nii = sub.Nii,
+                    Retail = sub.Retail,
+                    Employee = sub.Employee,
+                    Total = sub.Total,
+                    ApplicationsCount = sub.ApplicationsCount,
+                    LastUpdated = sub.LastUpdated
+                }
+            };
+
+            return Ok(detail);
+        }
+
+        /// <summary>
+        /// Trigger on-demand sync from live market feeds immediately
+        /// </summary>
+        [HttpPost("sync")]
+        public async Task<IActionResult> TriggerSync()
+        {
+            var syncedCount = await _scraperService.SyncIpoDataAsync();
+            return Ok(new { success = true, syncedCount, message = $"Successfully synced {syncedCount} records from live exchange feeds." });
         }
     }
 }

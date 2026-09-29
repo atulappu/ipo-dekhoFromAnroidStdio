@@ -4,20 +4,30 @@ using IpoDekho.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the DI container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "IPODekho Real-Time API",
+        Version = "v1",
+        Description = "ASP.NET Core 8 Web API for Indian IPO Tracker, Live GMP feeds, and Push Notifications"
+    });
+});
 
 // Configure SQL Server Database Context
 builder.Services.AddDbContext<IpoDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("IpoDbConnection")));
 
-// Register 5-Minute Automated Ingestion Background Worker
+// Register Scraper, Notification and Background Services
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
+builder.Services.AddScoped<IIpoScraperService, IpoScraperService>();
 builder.Services.AddHostedService<IpoDataIngestionWorker>();
 
-// Configure CORS for Android App & Web
+// Configure CORS for Android Mobile App & Web
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -30,11 +40,15 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment() || true) // Enabled for easy testing
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "IPODekho API v1");
+        c.RoutePrefix = string.Empty; // Swagger UI as root
+    });
 }
 
 app.UseCors("AllowAll");

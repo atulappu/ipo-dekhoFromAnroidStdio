@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using IpoDekho.Backend.Data;
+using IpoDekho.Backend.DTOs;
+using IpoDekho.Backend.Services;
 
 namespace IpoDekho.Backend.Controllers
 {
@@ -9,12 +11,17 @@ namespace IpoDekho.Backend.Controllers
     public class AdminController : ControllerBase
     {
         private readonly IpoDbContext _context;
+        private readonly IFirebaseNotificationService _notificationService;
 
-        public AdminController(IpoDbContext context)
+        public AdminController(IpoDbContext context, IFirebaseNotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
 
+        /// <summary>
+        /// Get all active admin announcements
+        /// </summary>
         [HttpGet("notices")]
         public async Task<IActionResult> GetNotices()
         {
@@ -22,23 +29,39 @@ namespace IpoDekho.Backend.Controllers
                 .Where(n => n.IsActive)
                 .OrderByDescending(n => n.CreatedAt)
                 .ToListAsync();
+
             return Ok(notices);
         }
 
+        /// <summary>
+        /// Broadcast an urgent notice to all mobile app users
+        /// </summary>
         [HttpPost("broadcast")]
-        public async Task<IActionResult> BroadcastNotice([FromBody] AdminNoticeRecord notice)
+        public async Task<IActionResult> BroadcastNotice([FromBody] BroadcastNoticeRequest request)
         {
-            if (string.IsNullOrWhiteSpace(notice.Id))
+            var record = new AdminNoticeRecord
             {
-                notice.Id = Guid.NewGuid().ToString();
-            }
-            notice.CreatedAt = DateTimeOffset.UtcNow;
-            notice.IsActive = true;
+                Id = Guid.NewGuid().ToString(),
+                Title = request.Title,
+                Message = request.Message,
+                Category = request.Category,
+                TargetIpoId = request.TargetIpoId,
+                IsActive = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
 
-            _context.AdminNotices.Add(notice);
+            _context.AdminNotices.Add(record);
             await _context.SaveChangesAsync();
 
-            return Ok(new { success = true, noticeId = notice.Id, message = "Notice broadcasted successfully to all users" });
+            // Broadcast push notification
+            await _notificationService.BroadcastAdminNoticeAsync(request.Title, request.Message, request.TargetIpoId);
+
+            return Ok(new
+            {
+                success = true,
+                noticeId = record.Id,
+                message = "Notice broadcasted successfully to all devices."
+            });
         }
     }
 }

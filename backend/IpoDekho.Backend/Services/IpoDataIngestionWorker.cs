@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
-using IpoDekho.Backend.Data;
 
 namespace IpoDekho.Backend.Services
 {
@@ -26,13 +24,15 @@ namespace IpoDekho.Backend.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("IpoDataIngestionWorker started. Checking every {Interval} minutes...", _checkInterval.TotalMinutes);
+            _logger.LogInformation("IpoDataIngestionWorker started. Running automated cycle every {Interval} minutes...", _checkInterval.TotalMinutes);
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    await PerformIngestionCycleAsync();
+                    using var scope = _serviceProvider.CreateScope();
+                    var scraper = scope.ServiceProvider.GetRequiredService<IIpoScraperService>();
+                    await scraper.SyncIpoDataAsync();
                 }
                 catch (Exception ex)
                 {
@@ -41,20 +41,6 @@ namespace IpoDekho.Backend.Services
 
                 await Task.Delay(_checkInterval, stoppingToken);
             }
-        }
-
-        private async Task PerformIngestionCycleAsync()
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<IpoDbContext>();
-
-            _logger.LogInformation("Running automated sync against BSE / NSE and GMP aggregators at {Time}", DateTimeOffset.Now);
-
-            // Here background job:
-            // 1. Queries exchange public endpoints (BSE / NSE) for new IPO issues
-            // 2. Extracts latest live GMP rates
-            // 3. Checks if new IPOs need to be inserted or existing GMP updated
-            // 4. If any GMP changed or allotment is marked out, triggers notification broadcast
         }
     }
 }
