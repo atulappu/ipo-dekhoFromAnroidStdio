@@ -36,7 +36,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         IpoRepositoryImpl(
             remoteDataSource = ipoRemoteDataSource,
             watchlistDao = database.watchlistDao(),
-            searchHistoryDao = database.searchHistoryDao()
+            searchHistoryDao = database.searchHistoryDao(),
+            registrarDao = database.registrarDao(),
+            ipoDao = database.ipoDao(),
+            exchangeConfigDao = database.exchangeConfigDao()
         )
     }
 

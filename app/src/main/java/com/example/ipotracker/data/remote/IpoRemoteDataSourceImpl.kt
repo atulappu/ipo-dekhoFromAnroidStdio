@@ -23,7 +23,7 @@ class IpoRemoteDataSourceImpl(
                 Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Log.e(tag, "Network error fetching market indices", e)
+            Log.d(tag, "Remote API offline or unreachable (${e.javaClass.simpleName}: ${e.message}). Gracefully using local data.")
             Result.failure(e)
         }
     }
@@ -43,7 +43,7 @@ class IpoRemoteDataSourceImpl(
                 Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Log.e(tag, "Network error fetching IPOs", e)
+            Log.d(tag, "Remote API offline or unreachable (${e.javaClass.simpleName}: ${e.message}). Gracefully using local data.")
             Result.failure(e)
         }
     }
@@ -58,7 +58,7 @@ class IpoRemoteDataSourceImpl(
                 Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Log.e(tag, "Network error fetching IPO details for $id", e)
+            Log.d(tag, "Remote API offline or unreachable for IPO $id (${e.javaClass.simpleName}). Using local data.")
             Result.failure(e)
         }
     }
@@ -73,7 +73,7 @@ class IpoRemoteDataSourceImpl(
                 Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Log.e(tag, "Network error fetching subscription for $id", e)
+            Log.d(tag, "Remote API offline or unreachable for subscription $id (${e.javaClass.simpleName}). Using local data.")
             Result.failure(e)
         }
     }
@@ -88,7 +88,7 @@ class IpoRemoteDataSourceImpl(
                 Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Log.e(tag, "Network error fetching GMP history for $id", e)
+            Log.d(tag, "Remote API offline or unreachable for GMP history $id (${e.javaClass.simpleName}). Using local data.")
             Result.failure(e)
         }
     }
@@ -103,7 +103,7 @@ class IpoRemoteDataSourceImpl(
                 Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
             }
         } catch (e: Exception) {
-            Log.e(tag, "Network error searching IPOs for '$query'", e)
+            Log.d(tag, "Remote API offline or unreachable for search '$query' (${e.javaClass.simpleName}). Using local data.")
             Result.failure(e)
         }
     }

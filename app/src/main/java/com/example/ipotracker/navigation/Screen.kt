@@ -41,4 +41,5 @@ sealed class Screen(val route: String) {
     }
     object Auth : Screen("auth")
     object NotificationCenter : Screen("notification_center")
+    object ExchangeSettings : Screen("exchange_settings")
 }

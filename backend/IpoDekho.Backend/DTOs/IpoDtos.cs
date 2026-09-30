@@ -7,6 +7,7 @@ namespace IpoDekho.Backend.DTOs
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? Symbol { get; set; }
+        public string Exchange { get; set; } = "BSE, NSE";
         public string Type { get; set; } = "MAINBOARD"; // MAINBOARD, SME
         public string Status { get; set; } = "UPCOMING"; // UPCOMING, OPEN, CLOSED, LISTED, ALLOTMENT_AVAILABLE
         public decimal PriceBandMin { get; set; }
@@ -69,5 +70,25 @@ namespace IpoDekho.Backend.DTOs
 
         [Required]
         public decimal NewGmp { get; set; }
+    }
+
+    public class ExchangeConfigDto
+    {
+        public string ExchangeKey { get; set; } = string.Empty; // "NSE", "BSE"
+        public string SourceUrl { get; set; } = string.Empty;
+        public string DefaultUrl { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+        public DateTimeOffset? LastSyncedAt { get; set; }
+        public string? LastStatus { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
+    }
+
+    public class UpdateExchangeUrlRequest
+    {
+        [Required]
+        public string ExchangeKey { get; set; } = string.Empty; // "NSE" or "BSE"
+
+        [Required]
+        public string SourceUrl { get; set; } = string.Empty;
     }
 }

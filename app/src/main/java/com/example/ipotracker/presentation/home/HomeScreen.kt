@@ -65,7 +65,7 @@ fun HomeScreen(
     // Tab state: 0 = OPEN, 1 = UPCOMING, 2 = CLOSED
     var selectedTopTab by remember { mutableStateOf(0) }
     var filterMainboard by remember { mutableStateOf(true) }
-    var filterSme by remember { mutableStateOf(false) }
+    var filterSme by remember { mutableStateOf(true) }
     var selectedSortOption by remember { mutableStateOf(IpoSortOption.DEFAULT) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -261,6 +261,7 @@ fun HomeScreen(
                     MarketSummaryBar(indices = uiState.marketIndices)
                 }
 
+
             // Quick Tools Section
             item {
                 QuickToolsSection(
@@ -294,13 +295,28 @@ fun HomeScreen(
             // IPO Cards
             if (filteredList.isEmpty()) {
                 item {
+                    val emptyTitle = when (selectedTopTab) {
+                        0 -> "No Active IPOs Open for Bidding"
+                        1 -> "No Upcoming IPOs Found"
+                        else -> "No Closed IPOs Found"
+                    }
+                    val emptyMessage = when (selectedTopTab) {
+                        0 -> "There are no IPOs actively accepting bids on NSE or BSE today. Browse the Upcoming tab to view scheduled issues."
+                        1 -> "No upcoming IPO schedules reported. Stay tuned for new DRHP/RHP filings."
+                        else -> "No closed issues match your active filter."
+                    }
+                    val actionLabel = if (selectedTopTab == 0) "View Upcoming IPOs" else "Reset Filters"
                     EmptyState(
-                        title = "No IPOs Found",
-                        message = "No IPOs match the active category filter.",
-                        actionLabel = "Reset Filters",
+                        title = emptyTitle,
+                        message = emptyMessage,
+                        actionLabel = actionLabel,
                         onActionClick = {
-                            filterMainboard = true
-                            filterSme = true
+                            if (selectedTopTab == 0) {
+                                selectedTopTab = 1
+                            } else {
+                                filterMainboard = true
+                                filterSme = true
+                            }
                         }
                     )
                 }

@@ -46,30 +46,37 @@ namespace IpoDekho.Backend.Controllers
                 query = query.Where(i => i.Name.ToLower().Contains(term) || (i.Symbol != null && i.Symbol.ToLower().Contains(term)));
             }
 
-            var list = await query
+            var rawList = await query
                 .OrderByDescending(i => i.OpenDate)
-                .Select(i => new IpoDto
-                {
-                    Id = i.Id,
-                    Name = i.Name,
-                    Symbol = i.Symbol,
-                    Type = i.Type,
-                    Status = i.Status,
-                    PriceBandMin = i.PriceBandMin,
-                    PriceBandMax = i.PriceBandMax,
-                    LotSize = i.LotSize,
-                    IssueSizeCr = i.IssueSizeCr,
-                    CurrentGmp = i.CurrentGmp,
-                    OpenDate = i.OpenDate,
-                    CloseDate = i.CloseDate,
-                    AllotmentDate = i.AllotmentDate,
-                    ListingDate = i.ListingDate,
-                    RegistrarName = i.RegistrarName,
-                    RegistrarUrl = i.RegistrarUrl,
-                    IsAllotmentOut = i.IsAllotmentOut,
-                    UpdatedAt = i.UpdatedAt
-                })
                 .ToListAsync();
+
+            var list = rawList.Select(i => new IpoDto
+            {
+                Id = i.Id,
+                Name = i.Name,
+                Symbol = i.Symbol,
+                Type = i.Type,
+                Status = IpoStatusCalculator.GetIPOStatus(i),
+                PriceBandMin = i.PriceBandMin,
+                PriceBandMax = i.PriceBandMax,
+                LotSize = i.LotSize,
+                IssueSizeCr = i.IssueSizeCr,
+                CurrentGmp = i.CurrentGmp,
+                OpenDate = i.OpenDate,
+                CloseDate = i.CloseDate,
+                AllotmentDate = i.AllotmentDate,
+                ListingDate = i.ListingDate,
+                RegistrarName = i.RegistrarName,
+                RegistrarUrl = i.RegistrarUrl,
+                IsAllotmentOut = i.IsAllotmentOut,
+                UpdatedAt = i.UpdatedAt
+            }).ToList();
+
+            if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL")
+            {
+                var targetStatus = status.Trim().ToUpper();
+                list = list.Where(i => i.Status.Equals(targetStatus, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
 
             return Ok(list);
         }
@@ -103,7 +110,7 @@ namespace IpoDekho.Backend.Controllers
                 Name = ipo.Name,
                 Symbol = ipo.Symbol,
                 Type = ipo.Type,
-                Status = ipo.Status,
+                Status = IpoStatusCalculator.GetIPOStatus(ipo),
                 PriceBandMin = ipo.PriceBandMin,
                 PriceBandMax = ipo.PriceBandMax,
                 LotSize = ipo.LotSize,

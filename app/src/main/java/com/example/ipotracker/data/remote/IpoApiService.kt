@@ -35,4 +35,13 @@ interface IpoApiService {
 
     @GET("ipos/search")
     suspend fun searchIpos(@Query("q") query: String): Response<List<IpoDto>>
+
+    @GET("admin/exchange-urls")
+    suspend fun getExchangeUrls(): Response<List<com.example.ipotracker.data.remote.dto.ExchangeConfigRemoteDto>>
+
+    @retrofit2.http.POST("admin/exchange-urls")
+    suspend fun updateExchangeUrl(@retrofit2.http.Body request: com.example.ipotracker.data.remote.dto.UpdateExchangeUrlRequestDto): Response<Any>
+
+    @retrofit2.http.POST("ipos/sync")
+    suspend fun triggerExchangeSync(): Response<Any>
 }

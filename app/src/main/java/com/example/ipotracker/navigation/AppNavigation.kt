@@ -42,6 +42,8 @@ import com.example.ipotracker.presentation.ipo.IpoListViewModel
 import com.example.ipotracker.presentation.livemarket.LiveMarketScreen
 import com.example.ipotracker.presentation.more.DataSourcesScreen
 import com.example.ipotracker.presentation.more.DisclaimerScreen
+import com.example.ipotracker.presentation.more.ExchangeSettingsScreen
+import com.example.ipotracker.presentation.more.ExchangeSettingsViewModel
 import com.example.ipotracker.presentation.more.MoreScreen
 import com.example.ipotracker.presentation.more.SettingsScreen
 import com.example.ipotracker.presentation.search.SearchScreen
@@ -337,7 +339,19 @@ fun AppNavigation(
                     onNavigateToAiChat = { navController.navigate(Screen.AiChat.createRoute(null)) },
                     onNavigateToVoiceLive = { navController.navigate(Screen.VoiceLive.createRoute(null)) },
                     onNavigateToAuth = { navController.navigate(Screen.Auth.route) },
-                    onNavigateToNotificationCenter = { navController.navigate(Screen.NotificationCenter.route) }
+                    onNavigateToNotificationCenter = { navController.navigate(Screen.NotificationCenter.route) },
+                    onNavigateToExchangeSettings = { navController.navigate(Screen.ExchangeSettings.route) }
+                )
+            }
+
+            // Admin Exchange URLs & Ingestion Engine
+            composable(Screen.ExchangeSettings.route) {
+                val viewModel: ExchangeSettingsViewModel = viewModel(
+                    factory = ExchangeSettingsViewModel.provideFactory(appContainer.ipoRepository)
+                )
+                ExchangeSettingsScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

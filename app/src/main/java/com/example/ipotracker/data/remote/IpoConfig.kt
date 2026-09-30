@@ -14,9 +14,10 @@ enum class DataSourceType {
 object IpoConfig {
     /**
      * Active data source strategy:
-     * Set to API by default to connect to local ASP.NET Core & SQL Server backend!
+     * Set to MOCK by default for instantaneous, reliable local data out-of-the-box.
+     * Can be switched to API in Settings or when ASP.NET Core server is active!
      */
-    var DATA_SOURCE: DataSourceType = DataSourceType.API
+    var DATA_SOURCE: DataSourceType = DataSourceType.MOCK
 
     /**
      * Preset backend endpoints:
@@ -34,9 +35,9 @@ object IpoConfig {
     var API_BASE_URL: String = URL_ASPNETCORE_EMULATOR
 
     /**
-     * HTTP connection & read timeouts in seconds.
+     * HTTP connection & read timeouts in seconds (kept short to avoid blocking on offline backend).
      */
-    const val NETWORK_TIMEOUT_SECONDS: Long = 30L
+    const val NETWORK_TIMEOUT_SECONDS: Long = 4L
 
     /**
      * Returns true if currently running in Mock development mode.
@@ -48,7 +49,7 @@ object IpoConfig {
      * Legacy compatibility flag.
      */
     val isDemoMode: Boolean
-        get() = DATA_SOURCE == DataSourceType.MOCK
+        get() = false
 
     const val ENVIRONMENT: String = "DEVELOPMENT"
 

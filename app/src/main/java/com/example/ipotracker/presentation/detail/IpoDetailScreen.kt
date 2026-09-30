@@ -219,6 +219,7 @@ fun IpoDetailScreen(
                                     IpoStatus.CLOSED, IpoStatus.ALLOTMENT_PENDING -> ChipGray
                                     IpoStatus.ALLOTMENT_AVAILABLE -> MarketGreenLight
                                     IpoStatus.LISTED -> SecondaryBlueLight
+                                    else -> ChipGray
                                 },
                                 shape = RoundedCornerShape(4.dp),
                                 border = BorderStroke(
@@ -229,6 +230,7 @@ fun IpoDetailScreen(
                                         IpoStatus.CLOSED, IpoStatus.ALLOTMENT_PENDING -> BorderLight
                                         IpoStatus.ALLOTMENT_AVAILABLE -> MarketGreenBorder
                                         IpoStatus.LISTED -> SecondaryBlueContainer
+                                        else -> BorderLight
                                     }
                                 )
                             ) {
@@ -240,6 +242,7 @@ fun IpoDetailScreen(
                                         IpoStatus.ALLOTMENT_PENDING -> "WAITING"
                                         IpoStatus.ALLOTMENT_AVAILABLE -> "ALLOTMENT OUT"
                                         IpoStatus.LISTED -> "LISTED"
+                                        else -> "SCHEDULE PENDING"
                                     },
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                     fontWeight = FontWeight.Bold,
@@ -249,6 +252,7 @@ fun IpoDetailScreen(
                                         IpoStatus.CLOSED, IpoStatus.ALLOTMENT_PENDING -> NeutralGray
                                         IpoStatus.ALLOTMENT_AVAILABLE -> MarketGreen
                                         IpoStatus.LISTED -> SecondaryBlue
+                                        else -> NeutralGray
                                     },
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
@@ -878,7 +882,7 @@ fun IpoDetailScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         DetailKeyValueRow("Registrar", ipo.registrar, isAlt = false)
-                        val regUrl = ipo.allotmentInfo?.registrarUrl ?: "https://ris.kfintech.com/ipostatus/"
+                        val regUrl = ipo.getEffectiveRegistrarUrl()
                         DetailKeyValueRow("Registrar Portal", regUrl, isAlt = true)
                         DetailKeyValueRow("Lead Manager(s)", ipo.leadManagers, isAlt = false)
                         DetailKeyValueRow("Allotment Date", DateUtils.formatDisplayDate(ipo.allotmentDate), isAlt = true)
@@ -892,11 +896,8 @@ fun IpoDetailScreen(
                         ) {
                             Button(
                                 onClick = {
-                                    if (onNavigateToAllotment != null) onNavigateToAllotment(ipo.id)
-                                    else {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(regUrl))
-                                        context.startActivity(intent)
-                                    }
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(regUrl))
+                                    context.startActivity(intent)
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = SecondaryBlue),
                                 shape = RoundedCornerShape(6.dp),
@@ -905,9 +906,9 @@ fun IpoDetailScreen(
                                     .weight(1f)
                                     .height(36.dp)
                             ) {
-                                Icon(Icons.Default.FactCheck, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                Icon(Icons.Default.OpenInNew, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("CHECK ALLOTMENT", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("CHECK ALLOTMENT (${ipo.registrar.take(12)})", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
 
                             OutlinedButton(

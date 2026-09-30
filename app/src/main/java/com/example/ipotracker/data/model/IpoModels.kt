@@ -11,7 +11,9 @@ enum class IpoStatus {
     CLOSED,
     ALLOTMENT_PENDING,
     ALLOTMENT_AVAILABLE,
-    LISTED;
+    LISTED,
+    NOT_AVAILABLE,
+    DATA_ERROR;
 
     val isClosed: Boolean
         get() = this == CLOSED || this == ALLOTMENT_PENDING || this == ALLOTMENT_AVAILABLE || this == LISTED
@@ -142,6 +144,18 @@ data class AllotmentInfo(
     val note: String = "Allotment status is published directly by the registrar."
 )
 
+data class RegistrarItem(
+    val id: String,
+    val name: String,
+    val url: String,
+    val issuesManaged: Int,
+    val issueAmountCr: Double,
+    val comments: String? = null,
+    val createdDate: String = "2026-09-29",
+    val modifiedDate: String = "2026-09-29",
+    val modifiedBy: String = "Admin"
+)
+
 data class AnalysisReport(
     val businessSummary: String,
     val financialSnapshot: String,
@@ -199,7 +213,7 @@ data class IpoItem(
     val allotmentInfo: AllotmentInfo? = null,
     val analysisReport: AnalysisReport? = null,
     val isWatchlisted: Boolean = false,
-    val isDemoData: Boolean = true,
+    val isDemoData: Boolean = false,
     val allotmentStatus: AllotmentStatus = AllotmentStatus.PENDING,
     val listingStatus: ListingStatus = ListingStatus.NOT_LISTED,
     val liveMarketData: LiveMarketData? = null
@@ -220,4 +234,12 @@ data class IpoItem(
             }
             return IpoLifecycleState.CLOSED_ALLOTMENT_PENDING
         }
+
+    fun getEffectiveRegistrarUrl(): String {
+        val directUrl = allotmentInfo?.registrarUrl
+        if (!directUrl.isNullOrBlank()) {
+            return directUrl
+        }
+        return com.example.ipotracker.data.remote.MockIpoDataSource.getRegistrarUrl(registrar)
+    }
 }

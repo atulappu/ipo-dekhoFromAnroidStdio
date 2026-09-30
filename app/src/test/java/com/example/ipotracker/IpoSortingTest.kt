@@ -93,6 +93,13 @@ class IpoSortingTest {
         override suspend fun deleteSearchQuery(query: String) {}
         override suspend fun clearSearchHistory() {}
         override suspend fun refreshData(): Result<Unit> = Result.success(Unit)
+        override fun getRegistrars(): Flow<List<com.example.ipotracker.data.model.RegistrarItem>> = flowOf(emptyList())
+        override suspend fun updateRegistrarUrl(id: String, newUrl: String, comments: String?, modifiedBy: String): Result<Unit> = Result.success(Unit)
+        override suspend fun saveRegistrar(item: com.example.ipotracker.data.model.RegistrarItem): Result<Unit> = Result.success(Unit)
+        override fun getExchangeConfigs(): Flow<List<com.example.ipotracker.data.local.entity.ExchangeConfigEntity>> = flowOf(emptyList())
+        override suspend fun updateExchangeUrl(key: String, newUrl: String): Result<Unit> = Result.success(Unit)
+        override suspend fun resetExchangeUrls(): Result<Unit> = Result.success(Unit)
+        override suspend fun syncFromExchanges(): Result<Int> = Result.success(0)
     }
 
     @Before

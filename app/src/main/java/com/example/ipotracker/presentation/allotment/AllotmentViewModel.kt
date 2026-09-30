@@ -17,9 +17,14 @@ data class AllotmentUiState(
     val panNumber: String = "",
     val applicationNumber: String = "",
     val registrarName: String = "",
-    val registrarUrl: String = "https://ris.kfintech.com/ipostatus/",
+    val registrarUrl: String = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
     val isAllotmentOut: Boolean = false,
-    val infoMessage: String? = null
+    val infoMessage: String? = null,
+    val registrars: List<com.example.ipotracker.data.model.RegistrarItem> = emptyList(),
+    val registrarSearchQuery: String = "",
+    val editingRegistrar: com.example.ipotracker.data.model.RegistrarItem? = null,
+    val isEditUrlDialogOpen: Boolean = false,
+    val isAddRegistrarDialogOpen: Boolean = false
 )
 
 class AllotmentViewModel(
@@ -44,10 +49,16 @@ class AllotmentViewModel(
                         ipos = list,
                         selectedIpo = ipo,
                         registrarName = ipo?.allotmentInfo?.registrarName ?: ipo?.registrar ?: "Official Registrar",
-                        registrarUrl = ipo?.allotmentInfo?.registrarUrl ?: "https://ris.kfintech.com/ipostatus/",
+                        registrarUrl = ipo?.getEffectiveRegistrarUrl() ?: "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
                         isAllotmentOut = ipo?.allotmentInfo?.isAvailable == true
                     )
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            repository.getRegistrars().collect { regList ->
+                _uiState.update { it.copy(registrars = regList) }
             }
         }
     }
@@ -57,9 +68,90 @@ class AllotmentViewModel(
             it.copy(
                 selectedIpo = ipo,
                 registrarName = ipo.allotmentInfo?.registrarName ?: ipo.registrar,
-                registrarUrl = ipo.allotmentInfo?.registrarUrl ?: "https://ris.kfintech.com/ipostatus/",
+                registrarUrl = ipo.getEffectiveRegistrarUrl(),
                 isAllotmentOut = ipo.allotmentInfo?.isAvailable == true
             )
+        }
+    }
+
+    fun onRegistrarSearchChange(query: String) {
+        _uiState.update { it.copy(registrarSearchQuery = query) }
+    }
+
+    fun openEditUrlDialog(registrar: com.example.ipotracker.data.model.RegistrarItem) {
+        _uiState.update { it.copy(editingRegistrar = registrar, isEditUrlDialogOpen = true) }
+    }
+
+    fun closeEditUrlDialog() {
+        _uiState.update { it.copy(editingRegistrar = null, isEditUrlDialogOpen = false) }
+    }
+
+    fun openAddRegistrarDialog() {
+        _uiState.update { it.copy(isAddRegistrarDialogOpen = true) }
+    }
+
+    fun closeAddRegistrarDialog() {
+        _uiState.update { it.copy(isAddRegistrarDialogOpen = false) }
+    }
+
+    fun saveRegistrarUrl(id: String, newUrl: String, comments: String? = null) {
+        viewModelScope.launch {
+            repository.updateRegistrarUrl(id, newUrl, comments, "Admin")
+            closeEditUrlDialog()
+        }
+    }
+
+    fun saveFullRegistrar(
+        id: String,
+        name: String,
+        url: String,
+        issuesManaged: Int,
+        issueAmountCr: Double,
+        comment: String,
+        modifiedBy: String = "Admin"
+    ) {
+        viewModelScope.launch {
+            val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ENGLISH).format(java.util.Date())
+            val existing = _uiState.value.registrars.find { it.id == id }
+            val item = com.example.ipotracker.data.model.RegistrarItem(
+                id = id,
+                name = name.trim(),
+                url = url.trim(),
+                issuesManaged = issuesManaged,
+                issueAmountCr = issueAmountCr,
+                comments = comment.trim(),
+                createdDate = existing?.createdDate ?: todayDate,
+                modifiedDate = todayDate,
+                modifiedBy = modifiedBy.ifBlank { "Admin" }
+            )
+            repository.saveRegistrar(item)
+            closeEditUrlDialog()
+        }
+    }
+
+    fun addNewRegistrar(
+        name: String,
+        url: String,
+        issuesManaged: Int,
+        issueAmountCr: Double,
+        comment: String
+    ) {
+        viewModelScope.launch {
+            val cleanId = name.lowercase().replace(" ", "-").replace(".", "").take(30) + "-${System.currentTimeMillis() % 1000}"
+            val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ENGLISH).format(java.util.Date())
+            val item = com.example.ipotracker.data.model.RegistrarItem(
+                id = cleanId,
+                name = name.trim(),
+                url = url.trim(),
+                issuesManaged = issuesManaged,
+                issueAmountCr = issueAmountCr,
+                comments = comment.trim(),
+                createdDate = todayDate,
+                modifiedDate = todayDate,
+                modifiedBy = "Admin"
+            )
+            repository.saveRegistrar(item)
+            closeAddRegistrarDialog()
         }
     }
 

@@ -593,6 +593,7 @@ private fun SelectedIpoHeroCard(
                             IpoStatus.ALLOTMENT_PENDING -> "ALLOTMENT PENDING"
                             IpoStatus.ALLOTMENT_AVAILABLE -> "ALLOTMENT OUT"
                             IpoStatus.LISTED -> "LISTED"
+                            else -> "TBD"
                         },
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                         fontWeight = FontWeight.Bold,

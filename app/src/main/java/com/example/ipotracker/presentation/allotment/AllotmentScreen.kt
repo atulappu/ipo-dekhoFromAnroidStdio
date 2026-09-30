@@ -213,13 +213,13 @@ fun AllotmentScreen(
                         ) {
                             Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("CHECK ON OFFICIAL REGISTRAR PORTAL", fontWeight = FontWeight.Bold, fontSize = 11.5.sp, color = Color.White)
+                            Text("CHECK ON ${uiState.registrarName.uppercase()} PORTAL", fontWeight = FontWeight.Bold, fontSize = 11.5.sp, color = Color.White)
                         }
                     }
                 }
             }
 
-            // Major Registrar Quick Portals
+            // Master Official RTAs / Registrars Directory (12 verified portals with Admin URL Update)
             item {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
@@ -228,26 +228,494 @@ fun AllotmentScreen(
                     shadowElevation = 0.5.dp
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "OFFICIAL REGISTRAR DIRECTORY (${uiState.registrars.size})",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryOrange
+                                )
+                                Text(
+                                    text = "Room SQLite Database • Live Synced",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                    color = NeutralGray
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Button(
+                                    onClick = { viewModel.openAddRegistrarDialog() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text("Add Registrar", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Search Bar inside Registrar Table (Matches user screenshot)
+                        OutlinedTextField(
+                            value = uiState.registrarSearchQuery,
+                            onValueChange = { viewModel.onRegistrarSearchChange(it) },
+                            placeholder = { Text("Search registrar, URL, or comments...", fontSize = 11.5.sp) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null, tint = NeutralGray, modifier = Modifier.size(16.dp))
+                            },
+                            trailingIcon = {
+                                if (uiState.registrarSearchQuery.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { viewModel.onRegistrarSearchChange("") },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(14.dp))
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryOrange,
+                                unfocusedBorderColor = BorderLight
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Table Column Header (Matching Screenshot: Registrar | Issues Managed | Issue Amount)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Registrar & URL",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF334155),
+                                modifier = Modifier.weight(1.8f)
+                            )
+                            Text(
+                                text = "Issues",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF334155),
+                                modifier = Modifier.weight(0.7f)
+                            )
+                            Text(
+                                text = "Amount (Cr)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF334155),
+                                modifier = Modifier.weight(1.1f)
+                            )
+                            Spacer(modifier = Modifier.width(36.dp))
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        val filteredRegistrars = uiState.registrars.filter {
+                            it.name.contains(uiState.registrarSearchQuery, ignoreCase = true) ||
+                            it.url.contains(uiState.registrarSearchQuery, ignoreCase = true) ||
+                            (it.comments?.contains(uiState.registrarSearchQuery, ignoreCase = true) == true)
+                        }
+
+                        filteredRegistrars.forEachIndexed { index, reg ->
+                            RegistrarRowItem(
+                                registrar = reg,
+                                onOpenUrl = {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(reg.url))
+                                    context.startActivity(intent)
+                                },
+                                onEditUrl = {
+                                    viewModel.openEditUrlDialog(reg)
+                                }
+                            )
+                            if (index < filteredRegistrars.lastIndex) {
+                                HorizontalDivider(color = BorderLight, thickness = 0.6.dp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = BorderLight, thickness = 0.8.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Stock Exchanges Allotment Portals
                         Text(
-                            text = "DIRECT REGISTRAR & EXCHANGE PORTALS",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                            text = "EXCHANGE BACKUP VERIFICATION",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        RegistrarQuickLink("Link Intime India Pvt Ltd", "https://linkintime.co.in/initial_offer/public-issues.html", context)
-                        HorizontalDivider(color = BorderLight, thickness = 0.8.dp)
-                        RegistrarQuickLink("KFin Technologies Ltd (Karvy)", "https://ris.kfintech.com/ipostatus/", context)
-                        HorizontalDivider(color = BorderLight, thickness = 0.8.dp)
-                        RegistrarQuickLink("Bigshare Services Pvt Ltd", "https://www.bigshareonline.com/ipo_Allotment.html", context)
-                        HorizontalDivider(color = BorderLight, thickness = 0.8.dp)
+                        Spacer(modifier = Modifier.height(6.dp))
                         RegistrarQuickLink("BSE India Allotment Portal", "https://www.bseindia.com/investors/appli_check.aspx", context)
-                        HorizontalDivider(color = BorderLight, thickness = 0.8.dp)
+                        HorizontalDivider(color = BorderLight, thickness = 0.6.dp)
                         RegistrarQuickLink("NSE India Verification Portal", "https://www.nseindia.com/products/content/equities/ipos/ipo_login.htm", context)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // Admin URL & Registrar Details Update Dialog
+    if (uiState.isEditUrlDialogOpen && uiState.editingRegistrar != null) {
+        val reg = uiState.editingRegistrar!!
+        var editedName by remember(reg) { mutableStateOf(reg.name) }
+        var editedUrl by remember(reg) { mutableStateOf(reg.url) }
+        var editedIssues by remember(reg) { mutableStateOf(reg.issuesManaged.toString()) }
+        var editedAmount by remember(reg) { mutableStateOf(reg.issueAmountCr.toString()) }
+        var editedComments by remember(reg) { mutableStateOf(reg.comments ?: "") }
+        var editedModifiedBy by remember(reg) { mutableStateOf(reg.modifiedBy) }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.closeEditUrlDialog() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Edit Registrar Details (Admin)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editedName,
+                        onValueChange = { editedName = it },
+                        label = { Text("Registrar Name", fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = BorderLight
+                        )
+                    )
+                    OutlinedTextField(
+                        value = editedUrl,
+                        onValueChange = { editedUrl = it },
+                        label = { Text("Allotment Portal URL", fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = BorderLight
+                        )
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = editedIssues,
+                            onValueChange = { editedIssues = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Issues Managed", fontSize = 11.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryOrange,
+                                unfocusedBorderColor = BorderLight
+                            )
+                        )
+                        OutlinedTextField(
+                            value = editedAmount,
+                            onValueChange = { editedAmount = it },
+                            label = { Text("Amount (Cr)", fontSize = 11.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryOrange,
+                                unfocusedBorderColor = BorderLight
+                            )
+                        )
+                    }
+                    OutlinedTextField(
+                        value = editedComments,
+                        onValueChange = { editedComments = it },
+                        label = { Text("Comments / Remarks (Database Column)", fontSize = 11.sp) },
+                        maxLines = 2,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = BorderLight
+                        )
+                    )
+                    OutlinedTextField(
+                        value = editedModifiedBy,
+                        onValueChange = { editedModifiedBy = it },
+                        label = { Text("Modified By", fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = BorderLight
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Surface(
+                        color = Color(0xFFF8FAFC),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(6.dp)) {
+                            Text(
+                                text = "Created: ${reg.createdDate} • Last Modified: ${reg.modifiedDate}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = NeutralGray
+                            )
+                            Text(
+                                text = "Persisted directly in Room Database & memory",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                                color = SecondaryBlue
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editedUrl.isNotBlank() && editedName.isNotBlank()) {
+                            viewModel.saveFullRegistrar(
+                                id = reg.id,
+                                name = editedName,
+                                url = editedUrl.trim(),
+                                issuesManaged = editedIssues.toIntOrNull() ?: reg.issuesManaged,
+                                issueAmountCr = editedAmount.toDoubleOrNull() ?: reg.issueAmountCr,
+                                comment = editedComments,
+                                modifiedBy = editedModifiedBy
+                            )
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+                ) {
+                    Text("Save in Database", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.closeEditUrlDialog() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Add New Registrar Dialog
+    if (uiState.isAddRegistrarDialogOpen) {
+        var newName by remember { mutableStateOf("") }
+        var newUrl by remember { mutableStateOf("https://") }
+        var newIssues by remember { mutableStateOf("0") }
+        var newAmount by remember { mutableStateOf("0.0") }
+        var newComment by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.closeAddRegistrarDialog() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Add New Registrar (Admin)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Registrar Name (e.g. Cameo Corporate)", fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = BorderLight
+                        )
+                    )
+                    OutlinedTextField(
+                        value = newUrl,
+                        onValueChange = { newUrl = it },
+                        label = { Text("Allotment Portal URL", fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = BorderLight
+                        )
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newIssues,
+                            onValueChange = { newIssues = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Issues Managed", fontSize = 11.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryOrange,
+                                unfocusedBorderColor = BorderLight
+                            )
+                        )
+                        OutlinedTextField(
+                            value = newAmount,
+                            onValueChange = { newAmount = it },
+                            label = { Text("Amount (Cr)", fontSize = 11.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryOrange,
+                                unfocusedBorderColor = BorderLight
+                            )
+                        )
+                    }
+                    OutlinedTextField(
+                        value = newComment,
+                        onValueChange = { newComment = it },
+                        label = { Text("Comment / Remarks", fontSize = 11.sp) },
+                        maxLines = 2,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = BorderLight
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newName.isNotBlank() && newUrl.isNotBlank()) {
+                            viewModel.addNewRegistrar(
+                                name = newName,
+                                url = newUrl.trim(),
+                                issuesManaged = newIssues.toIntOrNull() ?: 0,
+                                issueAmountCr = newAmount.toDoubleOrNull() ?: 0.0,
+                                comment = newComment
+                            )
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+                ) {
+                    Text("Add to Database", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.closeAddRegistrarDialog() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun RegistrarRowItem(
+    registrar: com.example.ipotracker.data.model.RegistrarItem,
+    onOpenUrl: () -> Unit,
+    onEditUrl: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenUrl() }
+            .padding(vertical = 9.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1.8f)) {
+            Text(
+                text = registrar.name,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = registrar.url,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                color = SecondaryBlue,
+                maxLines = 1
+            )
+            if (!registrar.comments.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "💬 ${registrar.comments}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+            }
+            Text(
+                text = "Mod: ${registrar.modifiedDate} (${registrar.modifiedBy})",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.5.sp),
+                color = NeutralGray
+            )
+        }
+
+        Text(
+            text = "${registrar.issuesManaged}",
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(0.7f)
+        )
+
+        Text(
+            text = "₹${"%,.1f".format(registrar.issueAmountCr)}",
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF0F766E),
+            modifier = Modifier.weight(1.1f)
+        )
+
+        // Actions: Edit (Admin) & Open
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onEditUrl,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit Registrar (Admin)",
+                    tint = PrimaryOrange,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+            IconButton(
+                onClick = onOpenUrl,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.OpenInNew,
+                    contentDescription = "Open Portal",
+                    tint = SecondaryBlue,
+                    modifier = Modifier.size(15.dp)
+                )
             }
         }
     }
@@ -262,14 +730,14 @@ private fun RegistrarQuickLink(name: String, url: String, context: android.conte
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 context.startActivity(intent)
             }
-            .padding(vertical = 10.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = name, style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-            Text(text = url, style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = SecondaryBlue, maxLines = 1)
+            Text(text = name, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = url, style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp), color = SecondaryBlue, maxLines = 1)
         }
-        Icon(Icons.Default.OpenInNew, contentDescription = null, tint = SecondaryBlue, modifier = Modifier.size(15.dp))
+        Icon(Icons.Default.OpenInNew, contentDescription = null, tint = SecondaryBlue, modifier = Modifier.size(14.dp))
     }
 }

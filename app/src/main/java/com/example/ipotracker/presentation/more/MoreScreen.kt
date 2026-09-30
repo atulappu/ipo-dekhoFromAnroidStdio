@@ -31,6 +31,7 @@ fun MoreScreen(
     onNavigateToVoiceLive: () -> Unit = {},
     onNavigateToAuth: () -> Unit = {},
     onNavigateToNotificationCenter: () -> Unit = {},
+    onNavigateToExchangeSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -139,6 +140,13 @@ fun MoreScreen(
                             title = "Notification Center",
                             subtitle = "Real-time 5-min alerts: New IPO, GMP jumps & Allotment",
                             onClick = onNavigateToNotificationCenter
+                        )
+                        HorizontalDivider(color = BorderLight, thickness = 0.8.dp)
+                        MoreMenuItem(
+                            icon = Icons.Outlined.Hub,
+                            title = "Exchange URLs & Ingestion Engine",
+                            subtitle = "Dynamic NSE & BSE scraper endpoints & database sync",
+                            onClick = onNavigateToExchangeSettings
                         )
                         HorizontalDivider(color = BorderLight, thickness = 0.8.dp)
                         MoreMenuItem(

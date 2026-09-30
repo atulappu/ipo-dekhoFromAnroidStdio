@@ -174,7 +174,11 @@ class IpoListViewModel(
         var result = ipos
 
         if (status != null) {
-            result = result.filter { it.status == status }
+            result = if (status.isClosed) {
+                result.filter { it.status.isClosed }
+            } else {
+                result.filter { it.status == status }
+            }
         }
 
         // Market Type filter:

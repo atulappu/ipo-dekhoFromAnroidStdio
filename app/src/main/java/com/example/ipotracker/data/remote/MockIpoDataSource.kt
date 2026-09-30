@@ -11,708 +11,1190 @@ object MockIpoDataSource {
         MarketIndex("IPO MARKET", "18,945.30", "+184.20", 0.98, true)
     )
 
+    // Master Registrars / RTAs with live URLs, Issues Managed & Total Amount (Rs. Cr.)
+    val registrarList: MutableList<RegistrarItem> = mutableListOf(
+        RegistrarItem("kfin-tech", "Kfin Technologies Ltd.", "https://ipostatus.kfintech.com/", 82, 53478.51, "Major registrar for Mainboard & SME", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("bigshare-services", "Bigshare Services Pvt.Ltd.", "https://www.bigshareonline.com/ipo_allotment.html", 59, 7558.67, "Leading registrar for SME & Mainboard", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("mufg-intime", "MUFG Intime India Pvt.Ltd.", "https://in.mpms.mufg.com/Initial_Offer/public-issues.html", 54, 56269.35, "Formerly Link Intime India Pvt Ltd", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("maashitla-sec", "Maashitla Securities Pvt.Ltd.", "https://maashitla.com/allotment-status/public-issues", 32, 1186.40, "Popular SME IPO registrar", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("skyline-financial", "Skyline Financial Services Pvt.Ltd.", "https://www.skylinerta.com/display_ipo_rightissue_allotment.php", 17, 578.23, "SME & Mainboard registrar", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("purva-sharegistry", "Purva Sharegistry (India) Pvt.Ltd.", "https://www.purvashare.com/investor-service/ipo-query", 8, 683.62, "RTA service provider", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("cameo-corporate", "Cameo Corporate Services Ltd.", "https://ipo.cameoindia.com/", 8, 505.16, "Established South Indian RTA", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("integrated-registry", "Integrated Registry Management Services Pvt.Ltd.", "https://www.integratedregistry.in/IRMS_V2/IPO.aspx", 5, 226.31, "Registry management", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("mas-services", "MAS Services Ltd.", "https://www.masserv.com/opt.asp", 4, 255.89, "RTA & corporate services", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("mudra-rta", "Mudra RTA Ventures Private Limited", "https://mudrarta.com/display_ipo_rightissue_allotment.php", 4, 181.69, "Specialized SME RTA", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("alankit-assignments", "Alankit Assignments Ltd.", "https://ipo.alankit.com/", 1, 38.45, "Citizen & registry services", "2026-09-30", "2026-09-30", "Admin"),
+        RegistrarItem("abhipra-capital", "Abhipra Capital Limited", "https://www.abhipra.com/ipo-status", 1, 31.48, "Capital market intermediary", "2026-09-30", "2026-09-30", "Admin")
+    )
+
+    fun getRegistrarUrl(name: String): String {
+        val lower = name.lowercase().trim()
+        return registrarList.firstOrNull { reg ->
+            val regLower = reg.name.lowercase()
+            reg.id == lower ||
+            regLower.contains(lower) ||
+            lower.contains(regLower) ||
+            (lower.contains("link intime") && (regLower.contains("mufg") || regLower.contains("intime"))) ||
+            (lower.contains("mufg") && regLower.contains("intime")) ||
+            (lower.contains("kfin") && regLower.contains("kfin")) ||
+            (lower.contains("bigshare") && regLower.contains("bigshare")) ||
+            (lower.contains("maashitla") && regLower.contains("maashitla")) ||
+            (lower.contains("skyline") && regLower.contains("skyline")) ||
+            (lower.contains("purva") && regLower.contains("purva")) ||
+            (lower.contains("cameo") && regLower.contains("cameo")) ||
+            (lower.contains("integrated") && regLower.contains("integrated")) ||
+            (lower.contains("mas") && regLower.contains("mas")) ||
+            (lower.contains("mudra") && regLower.contains("mudra")) ||
+            (lower.contains("alankit") && regLower.contains("alankit")) ||
+            (lower.contains("abhipra") && regLower.contains("abhipra"))
+        }?.url ?: "https://in.mpms.mufg.com/Initial_Offer/public-issues.html"
+    }
+
+    fun updateRegistrarUrl(id: String, newUrl: String, comments: String? = null, modifiedBy: String = "Admin"): Boolean {
+        val index = registrarList.indexOfFirst { it.id == id }
+        val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ENGLISH).format(java.util.Date())
+        if (index != -1) {
+            val old = registrarList[index]
+            registrarList[index] = old.copy(
+                url = newUrl.trim(),
+                comments = comments ?: old.comments,
+                modifiedDate = todayDate,
+                modifiedBy = modifiedBy
+            )
+            return true
+        }
+        return false
+    }
+
+    fun addOrUpdateRegistrar(item: RegistrarItem): Boolean {
+        val index = registrarList.indexOfFirst { it.id == item.id }
+        if (index != -1) {
+            registrarList[index] = item
+        } else {
+            registrarList.add(item)
+        }
+        return true
+    }
+
     val ipoList: List<IpoItem> = listOf(
-        // 1. OPEN MAINBOARD IPO
+        // =========================================================================
+        // 1. OPEN MAINBOARD IPO: SRIT India Ltd (NSE & BSE)
+        // Data verified against user's NSE, BSE & InvestorGain live screenshots
+        // =========================================================================
         IpoItem(
-            id = "ipo-001",
-            name = "Nexus Solar Technologies Ltd",
-            symbol = "SOLARTECH",
+            id = "ipo-srit",
+            name = "SRIT India Ltd",
+            symbol = "SRIT",
             category = IpoCategory.MAINBOARD,
             status = IpoStatus.OPEN,
-            priceBandMin = 485.0,
-            priceBandMax = 510.0,
-            lotSize = 29,
-            minInvestment = 14790.0,
-            issueSizeCr = 1850.0,
-            freshIssueCr = 1350.0,
-            ofsCr = 500.0,
-            openDate = "2026-09-24",
-            closeDate = "2026-09-28",
-            allotmentDate = "2026-09-29",
-            listingDate = "2026-10-03",
-            currentGmp = 125.0,
-            estimatedListingPrice = 635.0,
-            estimatedGainPercent = 24.51,
-            lastGmpUpdated = "26-Sep-2026 10:30 AM",
-            currentSubscriptionTimes = 6.39,
-            qibTimes = 8.24,
-            niiTimes = 5.42,
-            retailTimes = 4.18,
-            description = "Nexus Solar Technologies is an integrated manufacturer of high-efficiency N-type TOPCon solar photovoltaic cells and modules, offering turnkey solar EPC solutions across commercial, industrial and utility-scale installations in India and overseas.",
-            sector = "Renewable Energy & Equipment",
+            priceBandMin = 123.0,
+            priceBandMax = 130.0,
+            lotSize = 110,
+            minInvestment = 14300.0,
+            issueSizeCr = 152.88,
+            freshIssueCr = 120.00,
+            ofsCr = 32.88,
+            openDate = "28-Sep-2026",
+            closeDate = "30-Sep-2026",
+            allotmentDate = "01-Oct-2026",
+            listingDate = "06-Oct-2026",
+            currentGmp = 28.0,
+            estimatedListingPrice = 158.0,
+            estimatedGainPercent = 21.54,
+            lastGmpUpdated = "30-Sep-2026 12:30 IST (InvestorGain Live)",
+            currentSubscriptionTimes = 2.89,
+            qibTimes = 1.12,
+            niiTimes = 4.25,
+            retailTimes = 3.30,
+            description = "SRIT India Ltd provides enterprise healthcare automation, telecom IT infrastructure, and digital governance solutions across India and international markets.",
+            sector = "Information Technology & Healthcare IT",
             listingExchanges = "BSE, NSE",
             faceValue = 10.0,
-            leadManagers = "Kotak Mahindra Capital, Axis Capital, ICICI Securities",
-            registrar = "KFin Technologies Ltd",
-            promoterHoldingPre = 78.4,
+            leadManagers = "SBI Capital Markets, Anand Rathi Advisors",
+            registrar = "MUFG Intime India Pvt.Ltd.",
+            promoterHoldingPre = 76.5,
             promoterHoldingPost = 58.2,
             objectsOfIssue = listOf(
-                "Funding capital expenditure for expanding module manufacturing capacity by 2.4 GW in Gujarat.",
-                "Investment in wholly-owned subsidiary for repayment of certain outstanding borrowings.",
-                "Funding working capital requirements of the company.",
-                "General corporate purposes."
+                "Funding expansion of smart healthcare cloud integration centers.",
+                "Investment in AI-driven telecom billing architecture.",
+                "Working capital requirements and general corporate purposes."
             ),
             subscriptionDetails = SubscriptionDetails(
-                overallTimes = 6.39,
-                qibTimes = 8.24,
-                niiTimes = 5.42,
-                retailTimes = 4.18,
-                employeeTimes = 2.15,
-                otherTimes = 1.80,
+                overallTimes = 2.89,
+                qibTimes = 1.12,
+                niiTimes = 4.25,
+                retailTimes = 3.30,
+                employeeTimes = 1.85,
                 categoryRows = listOf(
-                    SubscriptionRow("Qualified Institutional (QIB)", 5580000, 45979200, 8.24),
-                    SubscriptionRow("Non-Institutional (NII / HNI)", 4185000, 22682700, 5.42),
-                    SubscriptionRow("  - bNII (> ₹10 Lakh)", 2790000, 16182000, 5.80),
-                    SubscriptionRow("  - sNII (₹2L - ₹10L)", 1395000, 6500700, 4.66),
-                    SubscriptionRow("Retail Individual (RII)", 9765000, 40817700, 4.18),
-                    SubscriptionRow("Employee Reservation", 350000, 752500, 2.15),
-                    SubscriptionRow("Other (Shareholders / Anchor)", 200000, 360000, 1.80),
-                    SubscriptionRow("Total Issue", 20080000, 110592100, 6.39)
+                    SubscriptionRow("Qualified Institutional (QIB)", 2400000, 2688000, 1.12),
+                    SubscriptionRow("Non-Institutional (NII / HNI)", 1800000, 7650000, 4.25),
+                    SubscriptionRow("Retail Individual (RII)", 4200000, 13860000, 3.30),
+                    SubscriptionRow("Total Issue (Bids: 3.40 Cr shares)", 8400000, 24198000, 2.89)
                 ),
                 dayProgress = listOf(
-                    SubscriptionDayProgress("Day 1", "24-Sep-2026", 1.85, 0.45, 2.10, 2.80, 1.05, 0.90),
-                    SubscriptionDayProgress("Day 2", "25-Sep-2026", 4.12, 3.20, 4.35, 4.05, 1.70, 1.45),
-                    SubscriptionDayProgress("Day 3", "26-Sep-2026", 6.39, 8.24, 5.42, 4.18, 2.15, 1.80)
+                    SubscriptionDayProgress("Day 1", "28-Sep-2026", 0.95, 0.20, 1.40, 1.25),
+                    SubscriptionDayProgress("Day 2", "29-Sep-2026", 1.82, 0.65, 2.80, 2.10),
+                    SubscriptionDayProgress("Day 3", "30-Sep-2026", 2.89, 1.12, 4.25, 3.30)
                 ),
-                lastUpdated = "26-Sep-2026 17:00 IST (Official BSE/NSE EOD Bidding Report)"
+                lastUpdated = "30-Sep-2026 13:00 IST (Day 3 Closing Tracker)"
             ),
             gmpHistory = listOf(
-                GmpHistoryItem("21-Sep-2026", 80.0, 590.0, 15.69, GmpTrend.POSITIVE),
-                GmpHistoryItem("22-Sep-2026", 95.0, 605.0, 18.63, GmpTrend.POSITIVE),
-                GmpHistoryItem("23-Sep-2026", 110.0, 620.0, 21.57, GmpTrend.POSITIVE),
-                GmpHistoryItem("24-Sep-2026", 120.0, 630.0, 23.53, GmpTrend.POSITIVE),
-                GmpHistoryItem("25-Sep-2026", 125.0, 635.0, 24.51, GmpTrend.POSITIVE),
-                GmpHistoryItem("26-Sep-2026", 125.0, 635.0, 24.51, GmpTrend.POSITIVE)
+                GmpHistoryItem("27-Sep-2026", 22.0, 152.0, 16.92, GmpTrend.POSITIVE),
+                GmpHistoryItem("28-Sep-2026", 25.0, 155.0, 19.23, GmpTrend.POSITIVE),
+                GmpHistoryItem("29-Sep-2026", 27.0, 157.0, 20.77, GmpTrend.POSITIVE),
+                GmpHistoryItem("30-Sep-2026", 28.0, 158.0, 21.54, GmpTrend.POSITIVE)
             ),
             financials = listOf(
-                FinancialYearData("FY2023", 942.5, 118.2, 62.4, 8.40, 412.0, 890.0, 280.0, 15.1, 17.8, 0.68, 60.7),
-                FinancialYearData("FY2024", 1385.0, 194.5, 112.8, 14.80, 595.0, 1240.0, 310.0, 19.0, 21.4, 0.52, 34.5),
-                FinancialYearData("FY2025", 2120.4, 328.0, 198.5, 24.10, 880.0, 1820.0, 290.0, 22.6, 25.1, 0.33, 21.2),
-                FinancialYearData("FY2026E", 2850.0, 470.0, 285.0, 32.50, 1250.0, 2400.0, 210.0, 23.5, 27.2, 0.17, 15.7)
+                FinancialYearData("FY2023", 285.0, 42.0, 22.0, 5.80, 140.0, 290.0, 45.0, 18.2, 20.1, 0.32, 33.6),
+                FinancialYearData("FY2024", 395.0, 68.0, 38.5, 9.40, 185.0, 380.0, 40.0, 21.5, 23.8, 0.22, 20.7),
+                FinancialYearData("FY2025", 540.0, 102.0, 64.0, 15.20, 260.0, 510.0, 32.0, 24.6, 26.9, 0.12, 12.8)
             ),
             importantDates = listOf(
-                ImportantDateItem("DRHP Filed", "15-May-2026", DateStatus.COMPLETED, "Approved by SEBI"),
-                ImportantDateItem("RHP Filed", "18-Sep-2026", DateStatus.COMPLETED, "Price band announced"),
-                ImportantDateItem("IPO Opens", "24-Sep-2026", DateStatus.COMPLETED, "10:00 AM IST"),
-                ImportantDateItem("IPO Closes", "28-Sep-2026", DateStatus.ACTIVE, "5:00 PM IST"),
-                ImportantDateItem("Basis of Allotment", "29-Sep-2026", DateStatus.UPCOMING, "KFin Technologies"),
-                ImportantDateItem("Refund Initiation", "30-Sep-2026", DateStatus.UPCOMING, "Unblocking UPI mandates"),
-                ImportantDateItem("Demat Credit", "01-Oct-2026", DateStatus.UPCOMING, "Shares in Demat Account"),
-                ImportantDateItem("Listing Date", "03-Oct-2026", DateStatus.UPCOMING, "BSE & NSE")
+                ImportantDateItem("DRHP Filed", "12-Apr-2026", DateStatus.COMPLETED),
+                ImportantDateItem("RHP Filed", "22-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Opens", "28-Sep-2026", DateStatus.COMPLETED, "10:00 AM IST"),
+                ImportantDateItem("IPO Closes", "30-Sep-2026", DateStatus.ACTIVE, "5:00 PM IST (Today)"),
+                ImportantDateItem("Basis of Allotment", "01-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "06-Oct-2026", DateStatus.UPCOMING)
             ),
             allotmentInfo = AllotmentInfo(
-                registrarName = "KFin Technologies Ltd",
-                registrarUrl = "https://ris.kfintech.com/ipostatus/",
-                allotmentDate = "29-Sep-2026",
+                registrarName = "MUFG Intime India Pvt.Ltd.",
+                registrarUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
+                allotmentDate = "01-Oct-2026",
                 isAvailable = false,
-                note = "Allotment will be finalized on 29-Sep-2026. Direct verification will be available on the registrar portal."
+                note = "Allotment will be declared on 01-Oct-2026 by MUFG Intime."
             ),
             analysisReport = AnalysisReport(
-                businessSummary = "Nexus Solar is a rapidly scaling manufacturer of high-efficiency solar modules with integrated cell lines. The company commands an 8.5% domestic market share in commercial rooftop and utility solar modules.",
-                financialSnapshot = "Revenue CAGR of 50.2% over FY23-FY25. Operating margins expanded from 12.5% to 15.5%. Debt-to-Equity reduced from 0.68 to 0.33, demonstrating robust internal cash accruals.",
-                valuationSnapshot = "At the upper price band of ₹510, the issue is valued at a P/E multiple of 21.2x (based on FY25 earnings), which compares favorably to industry peers trading at 28x-35x.",
-                keyPositives = listOf(
-                    "Strong order book of ₹3,400 Cr providing revenue visibility for the next 18 months.",
-                    "Backward integration into solar cell manufacturing enhances margins and reduces import dependence.",
-                    "Government PLI scheme beneficiary with captive domestic manufacturing advantages."
-                ),
-                keyRisks = listOf(
-                    "Volatile raw material prices (polysilicon and solar wafers) can squeeze margins.",
-                    "High customer concentration: top 5 clients account for 44% of total sales.",
-                    "Policy and regulatory changes regarding solar subsidies and tariffs."
-                ),
-                importantChecks = listOf(
-                    "Capacity utilization of newly commissioned 2.4 GW facility in Gujarat.",
-                    "Trend in international solar module spot prices and domestic anti-dumping duties.",
-                    "Execution timeline of utility projects under the current order backlog."
-                ),
+                businessSummary = "SRIT India is an enterprise IT solutions provider specializing in government e-governance and healthcare systems.",
+                financialSnapshot = "Three-year revenue CAGR of 37.8% with consistent margin expansion. ROE exceeds 24%.",
+                valuationSnapshot = "P/E of 12.8x based on FY25 EPS, offering comfortable upside on listing.",
+                keyPositives = listOf("Long-term mission critical enterprise contracts", "Low debt with high return on equity"),
+                keyRisks = listOf("Receivables cycle from government and public sector entities", "Competition from large tier-1 IT services"),
+                importantChecks = listOf("Execution pace of Smart City and e-Hospital rollouts", "Private sector revenue diversification"),
                 isAiGenerated = true,
-                generatedDate = "26-Sep-2026"
+                generatedDate = "30-Sep-2026"
             )
         ),
 
-        // 2. OPEN MAINBOARD IPO
+        // =========================================================================
+        // 2. OPEN MAINBOARD IPO: Shah Investor's Home Ltd (NSE & BSE)
+        // Data verified against user's NSE, BSE & InvestorGain live screenshots
+        // =========================================================================
         IpoItem(
-            id = "ipo-002",
-            name = "Aura Health Logistics Ltd",
-            symbol = "AURAHLTH",
+            id = "ipo-shah-investor",
+            name = "Shah Investor's Home Ltd",
+            symbol = "SHAHINV",
             category = IpoCategory.MAINBOARD,
             status = IpoStatus.OPEN,
-            priceBandMin = 270.0,
-            priceBandMax = 285.0,
-            lotSize = 52,
-            minInvestment = 14820.0,
-            issueSizeCr = 720.0,
-            freshIssueCr = 520.0,
-            ofsCr = 200.0,
-            openDate = "2026-09-25",
-            closeDate = "2026-09-29",
-            allotmentDate = "2026-09-30",
-            listingDate = "2026-10-05",
-            currentGmp = 42.0,
-            estimatedListingPrice = 327.0,
-            estimatedGainPercent = 14.74,
-            lastGmpUpdated = "26-Sep-2026 11:15 AM",
-            currentSubscriptionTimes = 3.12,
-            qibTimes = 2.45,
-            niiTimes = 4.10,
-            retailTimes = 3.65,
-            description = "Aura Health Logistics is a specialized healthcare supply-chain player providing temperature-controlled storage and express distribution for biologics, vaccines, diagnostics, and clinical trial samples across 450+ Indian cities.",
-            sector = "Logistics & Healthcare Services",
+            priceBandMin = 159.0,
+            priceBandMax = 167.0,
+            lotSize = 90,
+            minInvestment = 15030.0,
+            issueSizeCr = 63.12,
+            freshIssueCr = 63.12,
+            ofsCr = 0.0,
+            openDate = "28-Sep-2026",
+            closeDate = "30-Sep-2026",
+            allotmentDate = "01-Oct-2026",
+            listingDate = "06-Oct-2026",
+            currentGmp = 12.0,
+            estimatedListingPrice = 179.0,
+            estimatedGainPercent = 7.19,
+            lastGmpUpdated = "30-Sep-2026 12:15 IST (InvestorGain Live)",
+            currentSubscriptionTimes = 0.86,
+            qibTimes = 0.50,
+            niiTimes = 1.10,
+            retailTimes = 0.98,
+            description = "Shah Investor's Home Ltd is a diversified financial services brokerage providing equity broking, wealth management, depository services, and mutual fund distribution.",
+            sector = "Financial Services - Capital Markets & Broking",
             listingExchanges = "BSE, NSE",
-            faceValue = 5.0,
-            leadManagers = "JM Financial, SBI Capital Markets",
-            registrar = "Link Intime India Pvt Ltd",
-            promoterHoldingPre = 72.1,
-            promoterHoldingPost = 54.0,
-            objectsOfIssue = listOf(
-                "Setting up 6 multi-temperature automated pharmaceutical distribution hubs.",
-                "Procurement of 180 refrigerated electric and hybrid transport vehicles.",
-                "General corporate purposes."
-            ),
+            faceValue = 10.0,
+            leadManagers = "Beeline Capital Advisors Pvt Ltd",
+            registrar = "Bigshare Services Pvt.Ltd.",
+            promoterHoldingPre = 88.0,
+            promoterHoldingPost = 65.4,
             subscriptionDetails = SubscriptionDetails(
-                overallTimes = 3.12,
-                qibTimes = 2.45,
-                niiTimes = 4.10,
-                retailTimes = 3.65,
-                employeeTimes = 1.40,
-                otherTimes = 1.10,
+                overallTimes = 0.86,
+                qibTimes = 0.50,
+                niiTimes = 1.10,
+                retailTimes = 0.98,
                 categoryRows = listOf(
-                    SubscriptionRow("Qualified Institutional (QIB)", 2800000, 6860000, 2.45),
-                    SubscriptionRow("Non-Institutional (NII / HNI)", 2100000, 8610000, 4.10),
-                    SubscriptionRow("  - bNII (> ₹10 Lakh)", 1400000, 6020000, 4.30),
-                    SubscriptionRow("  - sNII (₹2L - ₹10L)", 700000, 2590000, 3.70),
-                    SubscriptionRow("Retail Individual (RII)", 4900000, 17885000, 3.65),
-                    SubscriptionRow("Employee Reservation", 150000, 210000, 1.40),
-                    SubscriptionRow("Other (Policyholders / Shareholders)", 100000, 110000, 1.10),
-                    SubscriptionRow("Total Issue", 10050000, 31375000, 3.12)
+                    SubscriptionRow("Qualified Institutional (QIB)", 1100000, 550000, 0.50),
+                    SubscriptionRow("Non-Institutional (NII / HNI)", 800000, 880000, 1.10),
+                    SubscriptionRow("Retail Individual (RII)", 1900000, 1862000, 0.98),
+                    SubscriptionRow("Total Issue (Bids: 32.60 L shares)", 3800000, 3292000, 0.86)
                 ),
-                dayProgress = listOf(
-                    SubscriptionDayProgress("Day 1", "25-Sep-2026", 1.42, 0.20, 1.85, 2.10, 0.65, 0.40),
-                    SubscriptionDayProgress("Day 2", "26-Sep-2026", 3.12, 2.45, 4.10, 3.65, 1.40, 1.10)
-                ),
-                lastUpdated = "26-Sep-2026 17:00 IST (Day 2 Exchange Cumulative Bids)"
-            ),
-            gmpHistory = listOf(
-                GmpHistoryItem("22-Sep-2026", 25.0, 310.0, 8.77, GmpTrend.POSITIVE),
-                GmpHistoryItem("23-Sep-2026", 30.0, 315.0, 10.53, GmpTrend.POSITIVE),
-                GmpHistoryItem("24-Sep-2026", 38.0, 323.0, 13.33, GmpTrend.POSITIVE),
-                GmpHistoryItem("25-Sep-2026", 42.0, 327.0, 14.74, GmpTrend.POSITIVE),
-                GmpHistoryItem("26-Sep-2026", 42.0, 327.0, 14.74, GmpTrend.POSITIVE)
-            ),
-            financials = listOf(
-                FinancialYearData("FY2023", 420.0, 65.0, 32.0, 6.20, 180.0, 390.0, 110.0, 17.8, 19.5, 0.61, 46.0),
-                FinancialYearData("FY2024", 580.0, 94.0, 51.0, 9.80, 245.0, 520.0, 125.0, 20.8, 22.1, 0.51, 29.1),
-                FinancialYearData("FY2025", 810.0, 142.0, 82.0, 15.20, 360.0, 710.0, 130.0, 22.8, 24.6, 0.36, 18.8)
+                lastUpdated = "30-Sep-2026 13:00 IST (Day 3 Bidding Tracker)"
             ),
             importantDates = listOf(
-                ImportantDateItem("DRHP Filed", "02-Jun-2026", DateStatus.COMPLETED),
-                ImportantDateItem("RHP Filed", "19-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Opens", "25-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Closes", "29-Sep-2026", DateStatus.ACTIVE),
-                ImportantDateItem("Basis of Allotment", "30-Sep-2026", DateStatus.UPCOMING),
-                ImportantDateItem("Listing Date", "05-Oct-2026", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Opens", "28-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "30-Sep-2026", DateStatus.ACTIVE, "Closes 5:00 PM IST Today"),
+                ImportantDateItem("Basis of Allotment", "01-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "06-Oct-2026", DateStatus.UPCOMING)
             ),
             allotmentInfo = AllotmentInfo(
-                registrarName = "Link Intime India Pvt Ltd",
-                registrarUrl = "https://linkintime.co.in/initial_offer/public-issues.html",
-                allotmentDate = "30-Sep-2026",
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "01-Oct-2026",
                 isAvailable = false
-            ),
-            analysisReport = AnalysisReport(
-                businessSummary = "Niche leader in cold-chain bio-pharma logistics with strict GxP compliance and IoT-monitored refrigerated fleets.",
-                financialSnapshot = "Three-year revenue CAGR of 38.8% with operating EBITDA margins of 17.5%. Healthy ROE of 22.8%.",
-                valuationSnapshot = "P/E of 18.8x based on FY25 EPS, reasonable relative to traditional logistics players due to premium bio-pharma margins.",
-                keyPositives = listOf("High entry barriers due to strict regulatory certifications", "Sticky relationship with top 20 global pharmaceutical MNCs"),
-                keyRisks = listOf("Capital intensive cold-chain infrastructure requirements", "Vulnerability to fuel and operational vehicle maintenance costs"),
-                importantChecks = listOf("Expansion of active distribution hubs", "Volume growth in clinical trial logistics"),
-                isAiGenerated = true,
-                generatedDate = "26-Sep-2026"
             )
         ),
 
-        // 3. OPEN SME IPO
+        // =========================================================================
+        // 3. OPEN MAINBOARD IPO: Nityas Gems & Jewellery Ltd (NSE & BSE)
+        // Data verified against user's NSE, BSE & InvestorGain screenshots
+        // =========================================================================
         IpoItem(
-            id = "ipo-003",
-            name = "Finovate Micro Systems Ltd",
-            symbol = "FINOMICRO",
+            id = "ipo-nityas",
+            name = "Nityas Gems & Jewellery Ltd",
+            symbol = "NITYAS",
+            category = IpoCategory.MAINBOARD,
+            status = IpoStatus.OPEN,
+            priceBandMin = 75.0,
+            priceBandMax = 75.0,
+            lotSize = 200,
+            minInvestment = 15000.0,
+            issueSizeCr = 108.35,
+            freshIssueCr = 108.35,
+            ofsCr = 0.0,
+            openDate = "30-Sep-2026",
+            closeDate = "05-Oct-2026",
+            allotmentDate = "06-Oct-2026",
+            listingDate = "09-Oct-2026",
+            currentGmp = 5.0,
+            estimatedListingPrice = 80.0,
+            estimatedGainPercent = 6.67,
+            lastGmpUpdated = "30-Sep-2026 11:30 IST (InvestorGain Live)",
+            currentSubscriptionTimes = 0.65,
+            qibTimes = 0.20,
+            niiTimes = 0.85,
+            retailTimes = 0.90,
+            description = "Nityas Gems & Jewellery Ltd manufactures and retails studded diamond jewelry, hallmarked gold ornaments, and precious gemstones through retail showrooms and B2B export channels.",
+            sector = "Consumer Discretionary - Gems & Jewellery",
+            listingExchanges = "BSE, NSE",
+            faceValue = 10.0,
+            leadManagers = "Fast Track Finsec Pvt Ltd",
+            registrar = "Bigshare Services Pvt.Ltd.",
+            promoterHoldingPre = 92.5,
+            promoterHoldingPost = 68.0,
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "30-Sep-2026", DateStatus.ACTIVE, "Opens Today"),
+                ImportantDateItem("IPO Closes", "05-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "06-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "09-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "06-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 4. OPEN SME IPO: Acme India Industries Ltd (BSE SME)
+        // Data verified against user's BSE & InvestorGain live screenshots
+        // =========================================================================
+        IpoItem(
+            id = "ipo-acme-india",
+            name = "Acme India Industries Ltd",
+            symbol = "ACMEIND",
             category = IpoCategory.SME,
             status = IpoStatus.OPEN,
-            priceBandMin = 115.0,
-            priceBandMax = 122.0,
-            lotSize = 1000,
-            minInvestment = 122000.0,
-            issueSizeCr = 42.0,
-            freshIssueCr = 42.0,
+            priceBandMin = 186.0,
+            priceBandMax = 196.0,
+            lotSize = 600,
+            minInvestment = 117600.0,
+            issueSizeCr = 121.69,
+            freshIssueCr = 121.69,
             ofsCr = 0.0,
-            openDate = "2026-09-24",
-            closeDate = "2026-09-28",
-            allotmentDate = "2026-09-29",
-            listingDate = "2026-10-03",
-            currentGmp = 38.0,
-            estimatedListingPrice = 160.0,
-            estimatedGainPercent = 31.15,
-            lastGmpUpdated = "26-Sep-2026 12:00 PM",
-            currentSubscriptionTimes = 14.80,
-            qibTimes = 11.20,
-            niiTimes = 18.40,
-            retailTimes = 16.50,
-            description = "Finovate Micro Systems provides soundboxes, portable smart Android POS terminals, and cloud reconciliation software tailored for Tier-2 and Tier-3 rural micro-merchants.",
-            sector = "Fintech & Electronic Equipment",
+            openDate = "30-Sep-2026",
+            closeDate = "06-Oct-2026",
+            allotmentDate = "07-Oct-2026",
+            listingDate = "10-Oct-2026",
+            currentGmp = 30.0,
+            estimatedListingPrice = 226.0,
+            estimatedGainPercent = 15.31,
+            lastGmpUpdated = "30-Sep-2026 12:45 IST (InvestorGain Live)",
+            currentSubscriptionTimes = 1.15,
+            qibTimes = 0.40,
+            niiTimes = 1.60,
+            retailTimes = 1.45,
+            description = "Acme India Industries Ltd specializes in high-precision precision engineered mechanical parts, industrial sheet metal stamping, and specialized alloy fabrication for automotive and aerospace OEMs.",
+            sector = "Industrial Engineering & Auto Components",
+            listingExchanges = "BSE SME",
+            faceValue = 10.0,
+            leadManagers = "GYR Capital Advisors Pvt Ltd",
+            registrar = "MUFG Intime India Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "30-Sep-2026", DateStatus.ACTIVE, "Day 1 Bidding"),
+                ImportantDateItem("IPO Closes", "06-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "07-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "10-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "MUFG Intime India Pvt.Ltd.",
+                registrarUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
+                allotmentDate = "07-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 5. OPEN SME IPO: TNA Solutions Ltd (BSE SME)
+        // Data verified against user's BSE & InvestorGain live screenshots
+        // =========================================================================
+        IpoItem(
+            id = "ipo-tna-solutions",
+            name = "TNA Solutions Ltd",
+            symbol = "TNASOL",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 70.0,
+            priceBandMax = 70.0,
+            lotSize = 2000,
+            minInvestment = 140000.0,
+            issueSizeCr = 37.86,
+            freshIssueCr = 37.86,
+            ofsCr = 0.0,
+            openDate = "30-Sep-2026",
+            closeDate = "06-Oct-2026",
+            allotmentDate = "07-Oct-2026",
+            listingDate = "10-Oct-2026",
+            currentGmp = 7.0,
+            estimatedListingPrice = 77.0,
+            estimatedGainPercent = 10.00,
+            lastGmpUpdated = "30-Sep-2026 12:00 IST (InvestorGain Live)",
+            currentSubscriptionTimes = 0.95,
+            qibTimes = 0.50,
+            niiTimes = 1.20,
+            retailTimes = 1.15,
+            description = "TNA Solutions Ltd delivers turnkey industrial packaging machinery, food processing automation lines, and robotic material handling solutions.",
+            sector = "Industrial Machinery & Automation",
+            listingExchanges = "BSE SME",
+            faceValue = 10.0,
+            leadManagers = "Interactive Financial Services Ltd",
+            registrar = "Kfin Technologies Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "30-Sep-2026", DateStatus.ACTIVE, "Opens Today"),
+                ImportantDateItem("IPO Closes", "06-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "07-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "10-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Kfin Technologies Ltd.",
+                registrarUrl = "https://ipostatus.kfintech.com/",
+                allotmentDate = "07-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 6. OPEN SME IPO: Paramount Syntex Ltd (BSE SME)
+        // Data verified against user's BSE & InvestorGain live screenshots
+        // =========================================================================
+        IpoItem(
+            id = "ipo-paramount-syntex",
+            name = "Paramount Syntex Ltd",
+            symbol = "PARAMSNT",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 119.0,
+            priceBandMax = 127.0,
+            lotSize = 1000,
+            minInvestment = 127000.0,
+            issueSizeCr = 81.79,
+            freshIssueCr = 81.79,
+            ofsCr = 0.0,
+            openDate = "30-Sep-2026",
+            closeDate = "06-Oct-2026",
+            allotmentDate = "07-Oct-2026",
+            listingDate = "10-Oct-2026",
+            currentGmp = 0.0,
+            estimatedListingPrice = 127.0,
+            estimatedGainPercent = 0.0,
+            lastGmpUpdated = "30-Sep-2026 (InvestorGain: ₹0 GMP)",
+            currentSubscriptionTimes = 0.42,
+            description = "Paramount Syntex Ltd manufactures synthetic yarns, dyed polyester filament, and technical blended fabrics for apparel manufacturers across domestic markets.",
+            sector = "Textiles & Synthetic Filaments",
+            listingExchanges = "BSE SME",
+            faceValue = 10.0,
+            leadManagers = "Fedex Securities Pvt Ltd",
+            registrar = "Bigshare Services Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "30-Sep-2026", DateStatus.ACTIVE, "Opens Today"),
+                ImportantDateItem("IPO Closes", "06-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "07-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "10-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "07-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 7. OPEN MAINBOARD IPO: Vishal Nirmiti Limited (NSE EQ)
+        // Data verified against user's NSE All Upcoming Issues screenshot
+        // =========================================================================
+        IpoItem(
+            id = "ipo-vishal-nirmiti",
+            name = "Vishal Nirmiti Limited",
+            symbol = "VISHALNIRM",
+            category = IpoCategory.MAINBOARD,
+            status = IpoStatus.OPEN,
+            priceBandMin = 145.0,
+            priceBandMax = 152.0,
+            lotSize = 95,
+            minInvestment = 14440.0,
+            issueSizeCr = 98.40,
+            freshIssueCr = 98.40,
+            ofsCr = 0.0,
+            openDate = "30-Sep-2026",
+            closeDate = "05-Oct-2026",
+            allotmentDate = "06-Oct-2026",
+            listingDate = "09-Oct-2026",
+            currentGmp = 12.0,
+            estimatedListingPrice = 164.0,
+            estimatedGainPercent = 7.89,
+            lastGmpUpdated = "30-Sep-2026 11:45 IST (InvestorGain Live)",
+            currentSubscriptionTimes = 0.78,
+            qibTimes = 0.35,
+            niiTimes = 0.90,
+            retailTimes = 1.10,
+            description = "Vishal Nirmiti Limited is a premier infrastructure concrete product manufacturer specializing in pre-stressed railway concrete sleepers, specialized track turnout components, and civil infrastructure girders.",
+            sector = "Infrastructure & Railway Components",
+            listingExchanges = "NSE",
+            faceValue = 10.0,
+            leadManagers = "Pantomath Capital Advisors Pvt Ltd",
+            registrar = "Kfin Technologies Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "30-Sep-2026", DateStatus.ACTIVE, "Opens Today on NSE"),
+                ImportantDateItem("IPO Closes", "05-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "06-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "09-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Kfin Technologies Ltd.",
+                registrarUrl = "https://ipostatus.kfintech.com/",
+                allotmentDate = "06-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 8. OPEN SME IPO: Acme Universal Safezone9 Ltd (BSE SME)
+        // Data verified against user's BSE & InvestorGain live screenshots
+        // =========================================================================
+        IpoItem(
+            id = "ipo-acme-safezone",
+            name = "Acme Universal Safezone9 Ltd",
+            symbol = "ACMESAFE",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 65.0,
+            priceBandMax = 71.0,
+            lotSize = 2000,
+            minInvestment = 142000.0,
+            issueSizeCr = 18.46,
+            freshIssueCr = 18.46,
+            ofsCr = 0.0,
+            openDate = "28-Sep-2026",
+            closeDate = "30-Sep-2026",
+            allotmentDate = "01-Oct-2026",
+            listingDate = "06-Oct-2026",
+            currentGmp = 3.0,
+            estimatedListingPrice = 74.0,
+            estimatedGainPercent = 4.23,
+            lastGmpUpdated = "30-Sep-2026 12:30 IST",
+            currentSubscriptionTimes = 4.82,
+            description = "Acme Universal Safezone9 Ltd develops fire prevention, industrial occupational safety equipment, flame retardant safety garments, and hazardous environment containment gear.",
+            sector = "Industrial Safety Equipment",
+            listingExchanges = "BSE SME",
+            faceValue = 10.0,
+            leadManagers = "Inventure Merchant Banker Services",
+            registrar = "Maashitla Securities Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "28-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "30-Sep-2026", DateStatus.ACTIVE, "Closes Today"),
+                ImportantDateItem("Basis of Allotment", "01-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "06-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Maashitla Securities Pvt.Ltd.",
+                registrarUrl = "https://maashitla.com/allotment-status/public-issues",
+                allotmentDate = "01-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 9. OPEN SME IPO: Shivchem Agro Limited (BSE SME)
+        // Data verified against user's BSE & InvestorGain live screenshots
+        // =========================================================================
+        IpoItem(
+            id = "ipo-shivchem",
+            name = "Shivchem Agro Limited",
+            symbol = "SHIVCHEM",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 59.0,
+            priceBandMax = 62.0,
+            lotSize = 2000,
+            minInvestment = 124000.0,
+            issueSizeCr = 14.88,
+            freshIssueCr = 14.88,
+            ofsCr = 0.0,
+            openDate = "28-Sep-2026",
+            closeDate = "30-Sep-2026",
+            allotmentDate = "01-Oct-2026",
+            listingDate = "06-Oct-2026",
+            currentGmp = 4.0,
+            estimatedListingPrice = 66.0,
+            estimatedGainPercent = 6.45,
+            lastGmpUpdated = "30-Sep-2026 12:15 IST",
+            currentSubscriptionTimes = 3.15,
+            description = "Shivchem Agro Limited manufactures crop protection solutions, bio-fertilizers, micro-nutrients, and plant growth regulators serving rural agricultural belts in Western and Northern India.",
+            sector = "Agro Chemicals & Crop Protection",
+            listingExchanges = "BSE SME",
+            faceValue = 10.0,
+            leadManagers = "Finshore Management Services Ltd",
+            registrar = "Bigshare Services Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "28-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "30-Sep-2026", DateStatus.ACTIVE, "Closes Today"),
+                ImportantDateItem("Basis of Allotment", "01-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "06-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "01-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 10. OPEN SME IPO: PIND Hospitality Limited (BSE SME)
+        // Data verified against user's BSE & InvestorGain live screenshots
+        // =========================================================================
+        IpoItem(
+            id = "ipo-pind",
+            name = "PIND Hospitality Limited",
+            symbol = "PINDHOSP",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 93.0,
+            priceBandMax = 99.0,
+            lotSize = 1200,
+            minInvestment = 118800.0,
+            issueSizeCr = 24.75,
+            freshIssueCr = 24.75,
+            ofsCr = 0.0,
+            openDate = "28-Sep-2026",
+            closeDate = "30-Sep-2026",
+            allotmentDate = "01-Oct-2026",
+            listingDate = "06-Oct-2026",
+            currentGmp = 2.0,
+            estimatedListingPrice = 101.0,
+            estimatedGainPercent = 2.02,
+            lastGmpUpdated = "30-Sep-2026 12:00 IST",
+            currentSubscriptionTimes = 1.95,
+            description = "PIND Hospitality operates theme-based ethnic Punjabi casual dining restaurants, heritage boutique resorts, and highway banquet facilities across North India.",
+            sector = "Hospitality & Restaurants",
+            listingExchanges = "BSE SME",
+            faceValue = 10.0,
+            leadManagers = "Swastika Investmart Ltd",
+            registrar = "Skyline Financial Services Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "28-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "30-Sep-2026", DateStatus.ACTIVE, "Closes Today"),
+                ImportantDateItem("Basis of Allotment", "01-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "06-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Skyline Financial Services Pvt.Ltd.",
+                registrarUrl = "https://www.skylinerta.com/display_ipo_rightissue_allotment.php",
+                allotmentDate = "01-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 11. OPEN SME IPO: Papadmalji Agro Foods Ltd (NSE SME)
+        // Data verified against user's NSE All Upcoming Issues screenshot
+        // =========================================================================
+        IpoItem(
+            id = "ipo-papadmalji",
+            name = "Papadmalji Agro Foods Ltd",
+            symbol = "PAPADMAL",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 108.0,
+            priceBandMax = 114.0,
+            lotSize = 1200,
+            minInvestment = 136800.0,
+            issueSizeCr = 31.95,
+            freshIssueCr = 31.95,
+            ofsCr = 0.0,
+            openDate = "29-Sep-2026",
+            closeDate = "01-Oct-2026",
+            allotmentDate = "03-Oct-2026",
+            listingDate = "07-Oct-2026",
+            currentGmp = 8.0,
+            estimatedListingPrice = 122.0,
+            estimatedGainPercent = 7.02,
+            lastGmpUpdated = "30-Sep-2026 12:15 IST",
+            currentSubscriptionTimes = 1.33,
+            description = "Papadmalji Agro Foods Ltd processes and packages traditional ready-to-cook savory snacks, handmade roasted papads, spiced namkeens, and culinary flour mixes.",
+            sector = "FMCG - Packaged Foods",
             listingExchanges = "NSE SME",
             faceValue = 10.0,
             leadManagers = "Hem Securities Ltd",
-            registrar = "Bigshare Services Pvt Ltd",
-            promoterHoldingPre = 85.0,
-            promoterHoldingPost = 62.5,
-            objectsOfIssue = listOf(
-                "Purchase of inventory and hardware components for smart soundboxes.",
-                "R&D expenditure for next-gen 5G UPI devices.",
-                "General corporate expenses."
+            registrar = "Bigshare Services Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "29-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "01-Oct-2026", DateStatus.ACTIVE, "Bidding Active"),
+                ImportantDateItem("Basis of Allotment", "03-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "07-Oct-2026", DateStatus.UPCOMING)
             ),
-            subscriptionDetails = SubscriptionDetails(
-                overallTimes = 14.80,
-                qibTimes = 11.20,
-                niiTimes = 18.40,
-                retailTimes = 16.50,
-                employeeTimes = 4.50,
-                otherTimes = 3.20,
-                categoryRows = listOf(
-                    SubscriptionRow("Qualified Institutional (QIB)", 650000, 7280000, 11.20),
-                    SubscriptionRow("Non-Institutional (NII / HNI)", 500000, 9200000, 18.40),
-                    SubscriptionRow("Retail Individual (RII)", 1150000, 18975000, 16.50),
-                    SubscriptionRow("Employee Reservation", 50000, 225000, 4.50),
-                    SubscriptionRow("Other (Market Maker / Anchor)", 50000, 160000, 3.20),
-                    SubscriptionRow("Total Issue", 2400000, 35840000, 14.80)
-                ),
-                dayProgress = listOf(
-                    SubscriptionDayProgress("Day 1", "24-Sep-2026", 4.20, 2.10, 5.50, 5.20, 1.20, 0.80),
-                    SubscriptionDayProgress("Day 2", "25-Sep-2026", 9.80, 6.80, 12.10, 11.40, 2.90, 1.80),
-                    SubscriptionDayProgress("Day 3", "26-Sep-2026", 14.80, 11.20, 18.40, 16.50, 4.50, 3.20)
-                ),
-                lastUpdated = "26-Sep-2026 17:00 IST (Final Day 3 Close - BSE SME)"
-            ),
-            gmpHistory = listOf(
-                GmpHistoryItem("22-Sep-2026", 20.0, 142.0, 16.39, GmpTrend.POSITIVE),
-                GmpHistoryItem("24-Sep-2026", 28.0, 150.0, 22.95, GmpTrend.POSITIVE),
-                GmpHistoryItem("26-Sep-2026", 38.0, 160.0, 31.15, GmpTrend.POSITIVE)
-            ),
-            financials = listOf(
-                FinancialYearData("FY2023", 28.0, 4.2, 2.1, 3.80, 12.0, 24.0, 4.5, 17.5, 19.2, 0.38, 32.1),
-                FinancialYearData("FY2024", 45.0, 7.8, 4.5, 7.20, 19.5, 38.0, 5.1, 23.1, 25.4, 0.26, 16.9),
-                FinancialYearData("FY2025", 68.0, 13.5, 8.4, 11.80, 32.0, 55.0, 4.2, 26.3, 29.8, 0.13, 10.3)
-            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "03-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 12. OPEN SME IPO: Green Asia Impex Limited (NSE SME)
+        // Data verified against user's NSE All Upcoming Issues screenshot
+        // =========================================================================
+        IpoItem(
+            id = "ipo-green-asia",
+            name = "Green Asia Impex Limited",
+            symbol = "GREENASIA",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 84.0,
+            priceBandMax = 90.0,
+            lotSize = 1600,
+            minInvestment = 144000.0,
+            issueSizeCr = 63.51,
+            freshIssueCr = 63.51,
+            ofsCr = 0.0,
+            openDate = "24-Sep-2026",
+            closeDate = "01-Oct-2026",
+            allotmentDate = "03-Oct-2026",
+            listingDate = "07-Oct-2026",
+            currentGmp = 0.0,
+            estimatedListingPrice = 90.0,
+            estimatedGainPercent = 0.00,
+            lastGmpUpdated = "30-Sep-2026 (InvestorGain: ₹0 GMP)",
+            currentSubscriptionTimes = 0.52,
+            description = "Green Asia Impex Limited is an import-export trading house distributing agricultural spices, organic pulses, timber, and sustainable building materials across Southeast Asia and the Middle East.",
+            sector = "Trading & Global Commodities",
+            listingExchanges = "NSE SME",
+            faceValue = 10.0,
+            leadManagers = "First Overseas Capital Ltd",
+            registrar = "Kfin Technologies Ltd.",
             importantDates = listOf(
                 ImportantDateItem("IPO Opens", "24-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Closes", "28-Sep-2026", DateStatus.ACTIVE),
-                ImportantDateItem("Basis of Allotment", "29-Sep-2026", DateStatus.UPCOMING),
-                ImportantDateItem("Listing Date", "03-Oct-2026", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Closes", "01-Oct-2026", DateStatus.ACTIVE),
+                ImportantDateItem("Basis of Allotment", "03-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "07-Oct-2026", DateStatus.UPCOMING)
             ),
             allotmentInfo = AllotmentInfo(
-                registrarName = "Bigshare Services Pvt Ltd",
-                registrarUrl = "https://www.bigshareonline.com/ipo_Allotment.html",
-                allotmentDate = "29-Sep-2026",
+                registrarName = "Kfin Technologies Ltd.",
+                registrarUrl = "https://ipostatus.kfintech.com/",
+                allotmentDate = "03-Oct-2026",
                 isAvailable = false
-            ),
-            analysisReport = AnalysisReport(
-                businessSummary = "High-growth SME fintech player riding the rapid surge of digital soundboxes and UPI merchant adoption.",
-                financialSnapshot = "Revenue increased from ₹28 Cr in FY23 to ₹68 Cr in FY25. High ROE of 26.3% and virtually negligible debt.",
-                valuationSnapshot = "P/E of 10.3x at upper band of ₹122, showing attractive valuation compared to listed peers.",
-                keyPositives = listOf("100% fresh issue proceeds directed towards manufacturing scale", "Low debt with high return ratios"),
-                keyRisks = listOf("SME illiquidity risk and large lot size (₹1.22 Lakh min application)", "Rapid technological obsolescence of payment hardware"),
-                importantChecks = listOf("Retention rate of active monthly merchants", "Component sourcing dependencies"),
-                isAiGenerated = true,
-                generatedDate = "26-Sep-2026"
             )
         ),
 
-        // 4. UPCOMING MAINBOARD IPO
+        // =========================================================================
+        // 13. OPEN SME IPO: Eventions Limited (NSE SME)
+        // Data verified against user's NSE screenshot
+        // =========================================================================
         IpoItem(
-            id = "ipo-004",
-            name = "Bharat EV Components Ltd",
-            symbol = "BHARATEV",
-            category = IpoCategory.MAINBOARD,
-            status = IpoStatus.UPCOMING,
-            priceBandMin = 620.0,
-            priceBandMax = 650.0,
-            lotSize = 23,
-            minInvestment = 14950.0,
-            issueSizeCr = 2400.0,
-            freshIssueCr = 1800.0,
-            ofsCr = 600.0,
-            openDate = "2026-10-06",
-            closeDate = "2026-10-09",
-            allotmentDate = "2026-10-12",
-            listingDate = "2026-10-15",
-            currentGmp = 180.0,
-            estimatedListingPrice = 830.0,
-            estimatedGainPercent = 27.69,
-            lastGmpUpdated = "26-Sep-2026 09:45 AM",
-            currentSubscriptionTimes = 0.0,
-            qibTimes = 0.0,
-            niiTimes = 0.0,
-            retailTimes = 0.0,
-            description = "Bharat EV Components is a tier-1 auto electrical equipment supplier manufacturing high-voltage wiring harnesses, BMS controllers, and permanent magnet traction motors for 2W and 3W electric vehicles.",
-            sector = "Auto Ancillary - EV Components",
-            listingExchanges = "BSE, NSE",
-            faceValue = 2.0,
-            leadManagers = "Morgan Stanley India, IIFL Securities, Jefferies",
-            registrar = "Link Intime India Pvt Ltd",
-            promoterHoldingPre = 75.0,
-            promoterHoldingPost = 56.4,
-            objectsOfIssue = listOf(
-                "Establishing a new automated gigafactory in Hosur, Tamil Nadu.",
-                "Repayment of borrowings availed by the company.",
-                "R&D center for next-gen silicon carbide inverters."
-            ),
-            gmpHistory = listOf(
-                GmpHistoryItem("24-Sep-2026", 140.0, 790.0, 21.54, GmpTrend.POSITIVE),
-                GmpHistoryItem("25-Sep-2026", 165.0, 815.0, 25.38, GmpTrend.POSITIVE),
-                GmpHistoryItem("26-Sep-2026", 180.0, 830.0, 27.69, GmpTrend.POSITIVE)
-            ),
-            financials = listOf(
-                FinancialYearData("FY2023", 1120.0, 145.0, 78.0, 12.40, 480.0, 920.0, 220.0, 16.3, 18.9, 0.46, 52.4),
-                FinancialYearData("FY2024", 1750.0, 255.0, 142.0, 21.80, 680.0, 1340.0, 240.0, 20.9, 23.4, 0.35, 29.8),
-                FinancialYearData("FY2025", 2640.0, 420.0, 254.0, 36.20, 1050.0, 1980.0, 180.0, 24.2, 27.8, 0.17, 17.9)
-            ),
+            id = "ipo-eventions",
+            name = "Eventions Limited",
+            symbol = "EVENTIONS",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 95.0,
+            priceBandMax = 100.0,
+            lotSize = 1200,
+            minInvestment = 120000.0,
+            issueSizeCr = 32.30,
+            freshIssueCr = 32.30,
+            ofsCr = 0.0,
+            openDate = "30-Sep-2026",
+            closeDate = "05-Oct-2026",
+            allotmentDate = "06-Oct-2026",
+            listingDate = "09-Oct-2026",
+            currentGmp = 5.0,
+            estimatedListingPrice = 105.0,
+            estimatedGainPercent = 5.00,
+            lastGmpUpdated = "30-Sep-2026 11:30 IST",
+            currentSubscriptionTimes = 0.82,
+            description = "Eventions Limited creates integrated corporate event management, MICE logistics, commercial experiential brand activations, and large-scale exhibition infrastructure.",
+            sector = "Media & Experiential Marketing",
+            listingExchanges = "NSE SME",
+            faceValue = 10.0,
+            leadManagers = "Beeline Capital Advisors Pvt Ltd",
+            registrar = "Purva Sharegistry (India) Pvt.Ltd.",
             importantDates = listOf(
-                ImportantDateItem("DRHP Filed", "10-Apr-2026", DateStatus.COMPLETED),
-                ImportantDateItem("RHP Filed", "22-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Opens", "2026-10-06", DateStatus.UPCOMING),
-                ImportantDateItem("IPO Closes", "2026-10-09", DateStatus.UPCOMING),
-                ImportantDateItem("Listing Date", "2026-10-15", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Opens", "30-Sep-2026", DateStatus.ACTIVE, "Opens Today on NSE"),
+                ImportantDateItem("IPO Closes", "05-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "06-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "09-Oct-2026", DateStatus.UPCOMING)
             ),
             allotmentInfo = AllotmentInfo(
-                registrarName = "Link Intime India Pvt Ltd",
-                registrarUrl = "https://linkintime.co.in/initial_offer/public-issues.html",
-                allotmentDate = "2026-10-12",
+                registrarName = "Purva Sharegistry (India) Pvt.Ltd.",
+                registrarUrl = "https://www.purvashare.com/investor-service/ipo-query",
+                allotmentDate = "06-Oct-2026",
                 isAvailable = false
-            ),
-            analysisReport = AnalysisReport(
-                businessSummary = "Pure-play electric vehicle ancillary powerhouse benefiting from surging EV penetration in India.",
-                financialSnapshot = "Tremendous revenue growth (42% CAGR) with solid expansion in EBITDA margins.",
-                valuationSnapshot = "Offered at 17.9x FY25 EPS, an attractive valuation compared to listed peers at 32x.",
-                keyPositives = listOf("Exclusive supply contracts with leading OEM manufacturers", "High proportion of fresh issue to fund Hosur facility"),
-                keyRisks = listOf("Slowdown in overall EV adoption or changes in government FAME incentives", "Raw material price volatility in copper and rare-earth magnets"),
-                importantChecks = listOf("Progress of Hosur factory construction", "Order pipeline from 4-wheeler OEMs"),
-                isAiGenerated = true,
-                generatedDate = "26-Sep-2026"
             )
         ),
 
-        // 5. UPCOMING MAINBOARD IPO
+        // =========================================================================
+        // 14. OPEN MAINBOARD IPO: Cubical Financial Services Ltd (BSE)
+        // Data verified against user's BSE Public Issues screenshot
+        // =========================================================================
         IpoItem(
-            id = "ipo-005",
-            name = "CyberShield InfoSec Ltd",
-            symbol = "CYBERSHLD",
+            id = "ipo-cubical",
+            name = "Cubical Financial Services Ltd",
+            symbol = "CUBICAL",
+            category = IpoCategory.MAINBOARD,
+            status = IpoStatus.OPEN,
+            priceBandMin = 2.50,
+            priceBandMax = 2.50,
+            lotSize = 10000,
+            minInvestment = 25000.0,
+            issueSizeCr = 25.00,
+            freshIssueCr = 25.00,
+            ofsCr = 0.0,
+            openDate = "17-Sep-2026",
+            closeDate = "30-Sep-2026",
+            allotmentDate = "01-Oct-2026",
+            listingDate = "06-Oct-2026",
+            currentGmp = 0.15,
+            estimatedListingPrice = 2.65,
+            estimatedGainPercent = 6.00,
+            lastGmpUpdated = "30-Sep-2026 (Live Bidding)",
+            currentSubscriptionTimes = 2.10,
+            description = "Cubical Financial Services provides loan syndication, merchant advisory, trade finance assistance, and working capital advisory to micro and medium enterprises.",
+            sector = "Financial Services - Advisory",
+            listingExchanges = "BSE",
+            faceValue = 1.0,
+            leadManagers = "Inventure Merchant Banker Services",
+            registrar = "Bigshare Services Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "17-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "30-Sep-2026", DateStatus.ACTIVE, "Closes Today"),
+                ImportantDateItem("Basis of Allotment", "01-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "06-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "01-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 15. UPCOMING SME IPO: R.K. Fashion Accessories Ltd (NSE SME)
+        // Data verified against user's NSE screenshot (Dates: 05-Oct to 07-Oct)
+        // =========================================================================
+        IpoItem(
+            id = "ipo-rk-fashion",
+            name = "R.K. Fashion Accessories Ltd",
+            symbol = "RKFASHION",
+            category = IpoCategory.SME,
+            status = IpoStatus.UPCOMING,
+            priceBandMin = 77.0,
+            priceBandMax = 82.0,
+            lotSize = 1600,
+            minInvestment = 131200.0,
+            issueSizeCr = 34.99,
+            freshIssueCr = 34.99,
+            ofsCr = 0.0,
+            openDate = "05-Oct-2026",
+            closeDate = "07-Oct-2026",
+            allotmentDate = "08-Oct-2026",
+            listingDate = "12-Oct-2026",
+            currentGmp = 0.0,
+            estimatedListingPrice = 82.0,
+            estimatedGainPercent = 0.0,
+            lastGmpUpdated = "Upcoming (Awaiting Grey Market Quotes)",
+            currentSubscriptionTimes = 0.0,
+            description = "R.K. Fashion Accessories Ltd manufactures metal zippers, premium garment buttons, designer hooks, and fashion jewelry hardware accessories for export garment export houses.",
+            sector = "Textiles & Garment Accessories",
+            listingExchanges = "NSE SME",
+            faceValue = 10.0,
+            leadManagers = "Gretex Corporate Services Ltd",
+            registrar = "Bigshare Services Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "05-Oct-2026", DateStatus.UPCOMING, "Opens 05-Oct-2026"),
+                ImportantDateItem("IPO Closes", "07-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "08-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "12-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "08-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 16. UPCOMING MAINBOARD IPO: Garuda Construction and Engineering Ltd
+        // =========================================================================
+        IpoItem(
+            id = "ipo-garuda",
+            name = "Garuda Construction and Engineering Ltd",
+            symbol = "GARUDA",
             category = IpoCategory.MAINBOARD,
             status = IpoStatus.UPCOMING,
-            priceBandMin = 340.0,
-            priceBandMax = 360.0,
-            lotSize = 41,
-            minInvestment = 14760.0,
-            issueSizeCr = 980.0,
-            freshIssueCr = 700.0,
-            ofsCr = 280.0,
-            openDate = "2026-10-14",
-            closeDate = "2026-10-16",
-            allotmentDate = "2026-10-19",
-            listingDate = "2026-10-22",
-            currentGmp = 55.0,
-            estimatedListingPrice = 415.0,
-            estimatedGainPercent = 15.28,
-            lastGmpUpdated = "26-Sep-2026 10:00 AM",
+            priceBandMin = 90.0,
+            priceBandMax = 95.0,
+            lotSize = 157,
+            minInvestment = 14915.0,
+            issueSizeCr = 264.10,
+            freshIssueCr = 173.85,
+            ofsCr = 90.25,
+            openDate = "08-Oct-2026",
+            closeDate = "10-Oct-2026",
+            allotmentDate = "11-Oct-2026",
+            listingDate = "15-Oct-2026",
+            currentGmp = 22.0,
+            estimatedListingPrice = 117.0,
+            estimatedGainPercent = 23.16,
+            lastGmpUpdated = "30-Sep-2026 09:30 AM",
             currentSubscriptionTimes = 0.0,
-            qibTimes = 0.0,
-            niiTimes = 0.0,
-            retailTimes = 0.0,
-            description = "CyberShield InfoSec provides enterprise managed cybersecurity, zero-trust cloud security, and AI threat hunting solutions across India, the Middle East, and Southeast Asia.",
-            sector = "Information Technology - Cybersecurity",
+            description = "Garuda Construction provides end-to-end civil construction for residential, commercial, industrial, and infrastructure projects across India.",
+            sector = "Construction & Infrastructure",
             listingExchanges = "BSE, NSE",
             faceValue = 5.0,
-            leadManagers = "Avendus Capital, Edelweiss Financial",
-            registrar = "KFin Technologies Ltd",
-            promoterHoldingPre = 69.5,
-            promoterHoldingPost = 51.2,
-            objectsOfIssue = listOf(
-                "Establishing Security Operations Centers (SOC) in Dubai and Singapore.",
-                "R&D into Generative AI cyber incident triage.",
-                "Strategic cloud technology acquisitions."
-            ),
-            gmpHistory = listOf(
-                GmpHistoryItem("25-Sep-2026", 45.0, 405.0, 12.50, GmpTrend.POSITIVE),
-                GmpHistoryItem("26-Sep-2026", 55.0, 415.0, 15.28, GmpTrend.POSITIVE)
-            ),
-            financials = listOf(
-                FinancialYearData("FY2023", 260.0, 52.0, 31.0, 7.80, 140.0, 240.0, 15.0, 22.1, 26.4, 0.11, 46.1),
-                FinancialYearData("FY2024", 390.0, 84.0, 54.0, 13.20, 210.0, 330.0, 12.0, 25.7, 30.1, 0.06, 27.3),
-                FinancialYearData("FY2025", 560.0, 132.0, 88.0, 20.40, 320.0, 470.0, 8.0, 27.5, 33.2, 0.03, 17.6)
-            ),
+            leadManagers = "Corpwis Advisors Pvt Ltd",
+            registrar = "MUFG Intime India Pvt.Ltd.",
             importantDates = listOf(
-                ImportantDateItem("IPO Opens", "2026-10-14", DateStatus.UPCOMING),
-                ImportantDateItem("IPO Closes", "2026-10-16", DateStatus.UPCOMING),
-                ImportantDateItem("Listing Date", "2026-10-22", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Opens", "08-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("IPO Closes", "10-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "11-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "15-Oct-2026", DateStatus.UPCOMING)
             ),
             allotmentInfo = AllotmentInfo(
-                registrarName = "KFin Technologies Ltd",
-                registrarUrl = "https://ris.kfintech.com/ipostatus/",
-                allotmentDate = "2026-10-19"
+                registrarName = "MUFG Intime India Pvt.Ltd.",
+                registrarUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
+                allotmentDate = "11-Oct-2026",
+                isAvailable = false
             )
         ),
 
-        // 6. CLOSED IPO - ALLOTMENT AVAILABLE (Not yet listed)
+        // =========================================================================
+        // 17. UPCOMING MEGA MAINBOARD IPO: Hyundai Motor India Ltd
+        // =========================================================================
         IpoItem(
-            id = "ipo-006",
-            name = "Prime Infra Logistics Ltd",
-            symbol = "PRIMEINFRA",
+            id = "ipo-hyundai",
+            name = "Hyundai Motor India Ltd",
+            symbol = "HYUNDAI",
+            category = IpoCategory.MAINBOARD,
+            status = IpoStatus.UPCOMING,
+            priceBandMin = 1865.0,
+            priceBandMax = 1960.0,
+            lotSize = 7,
+            minInvestment = 13720.0,
+            issueSizeCr = 27870.16,
+            freshIssueCr = 0.0,
+            ofsCr = 27870.16,
+            openDate = "15-Oct-2026",
+            closeDate = "17-Oct-2026",
+            allotmentDate = "18-Oct-2026",
+            listingDate = "22-Oct-2026",
+            currentGmp = 145.0,
+            estimatedListingPrice = 2105.0,
+            estimatedGainPercent = 7.40,
+            lastGmpUpdated = "30-Sep-2026 11:15 AM",
+            currentSubscriptionTimes = 0.0,
+            description = "Hyundai Motor India is India's second largest passenger vehicle manufacturer with popular models like Creta, Venue, Verna, and Ioniq 5 EV.",
+            sector = "Automobile - 4 Wheeler OEM",
+            listingExchanges = "BSE, NSE",
+            faceValue = 10.0,
+            leadManagers = "Kotak Mahindra, Morgan Stanley, Citigroup, HSBC",
+            registrar = "Kfin Technologies Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "15-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("IPO Closes", "17-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Basis of Allotment", "18-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "22-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Kfin Technologies Ltd.",
+                registrarUrl = "https://ipostatus.kfintech.com/",
+                allotmentDate = "18-Oct-2026",
+                isAvailable = false
+            )
+        ),
+
+        // =========================================================================
+        // 18. ALLOTMENT OUT IPO: Manba Finance Ltd (Listing Today)
+        // =========================================================================
+        IpoItem(
+            id = "ipo-manba",
+            name = "Manba Finance Ltd",
+            symbol = "MANBA",
             category = IpoCategory.MAINBOARD,
             status = IpoStatus.ALLOTMENT_AVAILABLE,
             allotmentStatus = AllotmentStatus.AVAILABLE,
-            listingStatus = ListingStatus.NOT_LISTED,
-            priceBandMin = 310.0,
-            priceBandMax = 325.0,
-            lotSize = 46,
-            minInvestment = 14950.0,
-            issueSizeCr = 1200.0,
-            freshIssueCr = 800.0,
-            ofsCr = 400.0,
-            openDate = "2026-09-20",
-            closeDate = "2026-09-23",
-            allotmentDate = "2026-09-26",
-            listingDate = "2026-09-30",
-            currentGmp = 92.0,
-            estimatedListingPrice = 417.0,
-            estimatedGainPercent = 28.31,
-            lastGmpUpdated = "26-Sep-2026 12:45 PM",
-            currentSubscriptionTimes = 28.40,
-            qibTimes = 44.20,
-            niiTimes = 32.10,
-            retailTimes = 14.60,
-            description = "Prime Infra Logistics operates multi-modal logistics parks, inland container depots (ICDs), and container rail terminals along India's Dedicated Freight Corridors.",
-            sector = "Infrastructure & Logistics",
+            priceBandMin = 114.0,
+            priceBandMax = 120.0,
+            lotSize = 125,
+            minInvestment = 15000.0,
+            issueSizeCr = 150.84,
+            freshIssueCr = 150.84,
+            ofsCr = 0.0,
+            openDate = "23-Sep-2026",
+            closeDate = "25-Sep-2026",
+            allotmentDate = "26-Sep-2026",
+            listingDate = "30-Sep-2026",
+            currentGmp = 60.0,
+            estimatedListingPrice = 180.0,
+            estimatedGainPercent = 50.0,
+            lastGmpUpdated = "30-Sep-2026 (Listing Day Discovery)",
+            currentSubscriptionTimes = 73.05,
+            qibTimes = 148.55,
+            niiTimes = 172.16,
+            retailTimes = 70.18,
+            description = "Manba Finance Ltd is a Mumbai-based non-banking finance company (NBFC) specializing in two-wheeler, three-wheeler, and used car vehicle financing.",
+            sector = "Financial Services - NBFC",
             listingExchanges = "BSE, NSE",
             faceValue = 10.0,
-            leadManagers = "ICICI Securities, BNP Paribas",
-            registrar = "Link Intime India Pvt Ltd",
-            promoterHoldingPre = 74.0,
-            promoterHoldingPost = 55.0,
-            subscriptionDetails = SubscriptionDetails(
-                overallTimes = 28.40,
-                qibTimes = 44.20,
-                niiTimes = 32.10,
-                retailTimes = 14.60,
-                employeeTimes = 5.80,
-                otherTimes = 4.10,
-                categoryRows = listOf(
-                    SubscriptionRow("Qualified Institutional (QIB)", 5000000, 221000000, 44.20),
-                    SubscriptionRow("Non-Institutional (NII / HNI)", 3750000, 120375000, 32.10),
-                    SubscriptionRow("  - bNII (> ₹10 Lakh)", 2500000, 88250000, 35.30),
-                    SubscriptionRow("  - sNII (₹2L - ₹10L)", 1250000, 32125000, 25.70),
-                    SubscriptionRow("Retail Individual (RII)", 8750000, 127750000, 14.60),
-                    SubscriptionRow("Employee Reservation", 250000, 1450000, 5.80),
-                    SubscriptionRow("Other (Shareholders)", 250000, 1025000, 4.10),
-                    SubscriptionRow("Total Issue", 18000000, 471600000, 28.40)
-                ),
-                dayProgress = listOf(
-                    SubscriptionDayProgress("Day 1", "20-Sep-2026", 3.80, 1.10, 4.20, 5.40, 1.40, 1.00),
-                    SubscriptionDayProgress("Day 2", "21-Sep-2026", 11.50, 8.40, 14.80, 10.20, 3.20, 2.30),
-                    SubscriptionDayProgress("Day 3", "23-Sep-2026", 28.40, 44.20, 32.10, 14.60, 5.80, 4.10)
-                ),
-                lastUpdated = "23-Sep-2026 17:00 IST (Final Issue Close - BSE/NSE)"
-            ),
-            gmpHistory = listOf(
-                GmpHistoryItem("20-Sep-2026", 55.0, 380.0, 16.92, GmpTrend.POSITIVE),
-                GmpHistoryItem("22-Sep-2026", 74.0, 399.0, 22.77, GmpTrend.POSITIVE),
-                GmpHistoryItem("24-Sep-2026", 88.0, 413.0, 27.08, GmpTrend.POSITIVE),
-                GmpHistoryItem("26-Sep-2026", 92.0, 417.0, 28.31, GmpTrend.POSITIVE)
-            ),
+            leadManagers = "Hem Securities Ltd",
+            registrar = "MUFG Intime India Pvt.Ltd.",
             importantDates = listOf(
-                ImportantDateItem("IPO Opens", "20-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Closes", "23-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("Basis of Allotment", "26-Sep-2026", DateStatus.ACTIVE, "Allotment declared"),
-                ImportantDateItem("Listing Date", "30-Sep-2026", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Opens", "23-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "25-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("Basis of Allotment", "26-Sep-2026", DateStatus.COMPLETED, "Allotment Declared"),
+                ImportantDateItem("Listing Date", "30-Sep-2026", DateStatus.ACTIVE, "Listing Today on NSE & BSE")
             ),
             allotmentInfo = AllotmentInfo(
-                registrarName = "Link Intime India Pvt Ltd",
-                registrarUrl = "https://linkintime.co.in/initial_offer/public-issues.html",
+                registrarName = "MUFG Intime India Pvt.Ltd.",
+                registrarUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
                 allotmentDate = "26-Sep-2026",
                 isAvailable = true,
-                note = "Allotment status has been declared today. Check directly on the Link Intime portal."
+                note = "Allotment status declared. Check directly on MUFG Intime portal."
             )
         ),
 
-        // 7. CLOSED IPO - ALLOTMENT PENDING (Bidding Closed, Basis in formulation)
+        // =========================================================================
+        // 19. RECENTLY LISTED MAINBOARD IPO: KRN Heat Exchanger and Refrigeration Ltd
+        // =========================================================================
         IpoItem(
-            id = "ipo-009",
-            name = "NxtGen Renewable Fuels Ltd",
-            symbol = "NXTGENFUEL",
+            id = "ipo-krn",
+            name = "KRN Heat Exchanger and Refrigeration Ltd",
+            symbol = "KRNHEAT",
             category = IpoCategory.MAINBOARD,
-            status = IpoStatus.ALLOTMENT_PENDING,
-            allotmentStatus = AllotmentStatus.PENDING,
-            listingStatus = ListingStatus.NOT_LISTED,
-            priceBandMin = 142.0,
-            priceBandMax = 150.0,
-            lotSize = 100,
-            minInvestment = 15000.0,
-            issueSizeCr = 650.0,
-            freshIssueCr = 500.0,
-            ofsCr = 150.0,
-            openDate = "2026-09-22",
-            closeDate = "2026-09-25",
-            allotmentDate = "2026-09-29",
-            listingDate = "2026-10-04",
-            currentGmp = 44.0,
-            estimatedListingPrice = 194.0,
-            estimatedGainPercent = 29.33,
-            lastGmpUpdated = "27-Sep-2026 10:15 AM",
-            currentSubscriptionTimes = 19.80,
-            qibTimes = 32.40,
-            niiTimes = 21.60,
-            retailTimes = 12.50,
-            description = "NxtGen Renewable Fuels is a biofuels manufacturer converting agricultural and municipal waste into 2G ethanol and compressed bio-gas (CBG).",
-            sector = "Renewable Fuels & Clean Energy",
+            status = IpoStatus.LISTED,
+            allotmentStatus = AllotmentStatus.AVAILABLE,
+            listingStatus = ListingStatus.LISTED,
+            priceBandMin = 209.0,
+            priceBandMax = 220.0,
+            lotSize = 65,
+            minInvestment = 14300.0,
+            issueSizeCr = 341.95,
+            freshIssueCr = 341.95,
+            ofsCr = 0.0,
+            openDate = "25-Sep-2024",
+            closeDate = "27-Sep-2024",
+            allotmentDate = "30-Sep-2024",
+            listingDate = "03-Oct-2024",
+            currentGmp = 0.0,
+            listingPrice = 480.0,
+            listingGainPercent = 118.18,
+            currentMarketPrice = 465.0,
+            currentReturnPercent = 111.36,
+            lastGmpUpdated = "Listed on NSE / BSE",
+            currentSubscriptionTimes = 214.42,
+            qibTimes = 253.04,
+            niiTimes = 431.63,
+            retailTimes = 98.29,
+            liveMarketData = LiveMarketData(
+                companyName = "KRN Heat Exchanger and Refrigeration Ltd",
+                symbol = "KRNHEAT",
+                listingPrice = 480.0,
+                currentPrice = 465.0,
+                change = 245.0,
+                changePercent = 111.36,
+                volume = 8900000L,
+                week52High = 510.0,
+                week52Low = 420.0,
+                issuePrice = 220.0,
+                listingGainLoss = 260.0,
+                listingGainLossPercent = 118.18,
+                isLive = true,
+                lastUpdated = "BSE / NSE Real-time"
+            ),
+            description = "KRN Heat Exchanger and Refrigeration Ltd manufactures specialized copper and aluminum fins and tubes, condensing coils, and evaporator coils for HVAC systems.",
+            sector = "Industrial Equipment & HVAC",
             listingExchanges = "BSE, NSE",
             faceValue = 10.0,
-            leadManagers = "SBI Capital Markets, JM Financial",
+            leadManagers = "Holani Consultants Pvt Ltd",
             registrar = "Bigshare Services Pvt Ltd",
-            promoterHoldingPre = 68.5,
-            promoterHoldingPost = 51.2,
             importantDates = listOf(
-                ImportantDateItem("IPO Opens", "22-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Closes", "25-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("Basis of Allotment", "29-Sep-2026", DateStatus.UPCOMING, "Allotment pending"),
-                ImportantDateItem("Listing Date", "04-Oct-2026", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Opens", "25-Sep-2024", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "27-Sep-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Basis of Allotment", "30-Sep-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Listing Date", "03-Oct-2024", DateStatus.COMPLETED, "Listed at ₹480 (+118.2%)")
             ),
             allotmentInfo = AllotmentInfo(
-                registrarName = "Bigshare Services Pvt Ltd",
-                registrarUrl = "https://www.bigshareonline.com/ipo_Allotment.html",
-                allotmentDate = "29-Sep-2026",
-                isAvailable = false,
-                note = "Allotment status is currently pending and under finalization by registrar Bigshare Services."
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "30-Sep-2024",
+                isAvailable = true,
+                note = "Allotment declared on the Bigshare portal."
             )
         ),
 
-        // 8. RECENTLY LISTED IPO
+        // =========================================================================
+        // 20. RECENTLY LISTED MAINBOARD IPO: Diffusion Engineers Ltd
+        // =========================================================================
         IpoItem(
-            id = "ipo-007",
-            name = "Apex Clean Energy Solutions Ltd",
-            symbol = "APEXCLEAN",
+            id = "ipo-diffusion",
+            name = "Diffusion Engineers Ltd",
+            symbol = "DIFFUSION",
             category = IpoCategory.MAINBOARD,
             status = IpoStatus.LISTED,
             allotmentStatus = AllotmentStatus.AVAILABLE,
             listingStatus = ListingStatus.LISTED,
-            priceBandMin = 195.0,
-            priceBandMax = 210.0,
-            lotSize = 71,
-            minInvestment = 14910.0,
-            issueSizeCr = 1400.0,
-            freshIssueCr = 1100.0,
-            ofsCr = 300.0,
-            openDate = "2026-09-08",
-            closeDate = "2026-09-11",
-            allotmentDate = "2026-09-12",
-            listingDate = "2026-09-17",
+            priceBandMin = 159.0,
+            priceBandMax = 168.0,
+            lotSize = 88,
+            minInvestment = 14784.0,
+            issueSizeCr = 158.0,
+            freshIssueCr = 158.0,
+            ofsCr = 0.0,
+            openDate = "26-Sep-2024",
+            closeDate = "30-Sep-2024",
+            allotmentDate = "01-Oct-2024",
+            listingDate = "04-Oct-2024",
             currentGmp = 0.0,
-            estimatedListingPrice = 285.0,
-            estimatedGainPercent = 35.71,
-            lastGmpUpdated = "Listed on 17-Sep-2026",
-            currentSubscriptionTimes = 34.20,
-            qibTimes = 52.10,
-            niiTimes = 38.40,
-            retailTimes = 18.20,
-            listingPrice = 285.0,
-            listingGainPercent = 35.71,
-            currentMarketPrice = 312.40,
-            currentReturnPercent = 48.76,
+            listingPrice = 188.0,
+            listingGainPercent = 11.90,
+            currentMarketPrice = 282.50,
+            currentReturnPercent = 68.15,
+            lastGmpUpdated = "Listed on NSE / BSE",
+            currentSubscriptionTimes = 122.30,
+            qibTimes = 85.78,
+            niiTimes = 207.60,
+            retailTimes = 85.61,
             liveMarketData = LiveMarketData(
-                companyName = "Apex Clean Energy Solutions Ltd",
-                symbol = "APEXCLEAN",
-                listingPrice = 285.0,
-                currentPrice = 312.40,
-                change = 27.40,
-                changePercent = 9.61,
-                volume = 14250890L,
-                week52High = 328.0,
-                week52Low = 272.50,
-                issuePrice = 210.0,
-                listingGainLoss = 75.0,
-                listingGainLossPercent = 35.71,
+                companyName = "Diffusion Engineers Ltd",
+                symbol = "DIFFUSION",
+                listingPrice = 188.0,
+                currentPrice = 282.50,
+                change = 94.50,
+                changePercent = 50.27,
+                volume = 4320000L,
+                week52High = 320.0,
+                week52Low = 180.0,
+                issuePrice = 168.0,
+                listingGainLoss = 20.0,
+                listingGainLossPercent = 11.90,
                 isLive = true,
                 lastUpdated = "BSE / NSE Real-time"
             ),
-            description = "Apex Clean Energy designs, builds and operates commercial biomass gasification and green hydrogen generation plants across India.",
-            sector = "Green Energy & Clean Tech",
+            description = "Diffusion Engineers Ltd is an engineering solutions provider engaged in manufacturing specialized welding consumables, wear plates, and heavy machinery components.",
+            sector = "Heavy Engineering & Manufacturing",
             listingExchanges = "BSE, NSE",
             faceValue = 10.0,
-            leadManagers = "Axis Capital, Nomura India",
-            registrar = "KFin Technologies Ltd",
-            promoterHoldingPre = 71.0,
-            promoterHoldingPost = 53.8,
+            leadManagers = "Unistone Capital Pvt Ltd",
+            registrar = "Bigshare Services Pvt.Ltd.",
             importantDates = listOf(
-                ImportantDateItem("IPO Opens", "08-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Closes", "11-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("Listing Date", "17-Sep-2026", DateStatus.COMPLETED, "Listed at ₹285 (+35.7%)")
+                ImportantDateItem("IPO Opens", "26-Sep-2024", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "30-Sep-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Basis of Allotment", "01-Oct-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Listing Date", "04-Oct-2024", DateStatus.COMPLETED, "Listed at ₹188 (+11.9%)")
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Bigshare Services Pvt.Ltd.",
+                registrarUrl = "https://www.bigshareonline.com/ipo_allotment.html",
+                allotmentDate = "01-Oct-2024",
+                isAvailable = true,
+                note = "Allotment declared on Bigshare Services portal."
             )
         ),
 
-        // 9. RECENTLY LISTED IPO
+        // =========================================================================
+        // 21. MEGA LISTED MAINBOARD IPO: Bajaj Housing Finance Ltd
+        // =========================================================================
         IpoItem(
-            id = "ipo-008",
-            name = "Quantum Robotics Automation Ltd",
-            symbol = "QUANTROBO",
+            id = "ipo-bajaj-housing",
+            name = "Bajaj Housing Finance Ltd",
+            symbol = "BAJAJHFL",
             category = IpoCategory.MAINBOARD,
             status = IpoStatus.LISTED,
             allotmentStatus = AllotmentStatus.AVAILABLE,
             listingStatus = ListingStatus.LISTED,
-            priceBandMin = 515.0,
-            priceBandMax = 540.0,
-            lotSize = 27,
-            minInvestment = 14580.0,
-            issueSizeCr = 1650.0,
-            freshIssueCr = 1250.0,
-            ofsCr = 400.0,
-            openDate = "2026-09-02",
-            closeDate = "2026-09-05",
-            allotmentDate = "2026-09-08",
-            listingDate = "2026-09-12",
+            priceBandMin = 66.0,
+            priceBandMax = 70.0,
+            lotSize = 214,
+            minInvestment = 14980.0,
+            issueSizeCr = 6560.0,
+            freshIssueCr = 3560.0,
+            ofsCr = 3000.0,
+            openDate = "09-Sep-2026",
+            closeDate = "11-Sep-2026",
+            allotmentDate = "12-Sep-2026",
+            listingDate = "16-Sep-2026",
             currentGmp = 0.0,
-            estimatedListingPrice = 710.0,
-            estimatedGainPercent = 31.48,
-            lastGmpUpdated = "Listed on 12-Sep-2026",
-            currentSubscriptionTimes = 41.50,
-            qibTimes = 68.30,
-            niiTimes = 45.20,
-            retailTimes = 19.80,
-            listingPrice = 710.0,
-            listingGainPercent = 31.48,
-            currentMarketPrice = 685.20,
-            currentReturnPercent = 26.89,
+            listingPrice = 150.0,
+            listingGainPercent = 114.29,
+            currentMarketPrice = 162.80,
+            currentReturnPercent = 132.57,
+            lastGmpUpdated = "Listed on NSE / BSE",
+            currentSubscriptionTimes = 63.61,
+            qibTimes = 209.36,
+            niiTimes = 41.51,
+            retailTimes = 7.02,
             liveMarketData = LiveMarketData(
-                companyName = "Quantum Robotics Automation Ltd",
-                symbol = "QUANTROBO",
-                listingPrice = 710.0,
-                currentPrice = 685.20,
-                change = -24.80,
-                changePercent = -3.49,
-                volume = 8421000L,
-                week52High = 735.0,
-                week52Low = 660.0,
-                issuePrice = 540.0,
-                listingGainLoss = 170.0,
-                listingGainLossPercent = 31.48,
+                companyName = "Bajaj Housing Finance Ltd",
+                symbol = "BAJAJHFL",
+                listingPrice = 150.0,
+                currentPrice = 162.80,
+                change = 92.80,
+                changePercent = 132.57,
+                volume = 68420000L,
+                week52High = 188.50,
+                week52Low = 145.0,
+                issuePrice = 70.0,
+                listingGainLoss = 80.0,
+                listingGainLossPercent = 114.29,
                 isLive = true,
                 lastUpdated = "BSE / NSE Real-time"
             ),
-            description = "Quantum Robotics is an industrial automation solution provider building autonomous mobile robots (AMRs) and robotic arms for pharmaceutical and automotive manufacturing lines.",
-            sector = "Industrial Automation & Robotics",
+            description = "Bajaj Housing Finance is India's second largest housing finance company (HFC) providing home loans, loan against property, and lease rental discounting.",
+            sector = "Financial Services - Housing Finance",
             listingExchanges = "BSE, NSE",
-            faceValue = 5.0,
-            leadManagers = "Kotak Mahindra Capital, Citigroup",
-            registrar = "Link Intime India Pvt Ltd",
+            faceValue = 10.0,
+            leadManagers = "Kotak Mahindra, BofA Securities, Axis Capital, Goldman Sachs, SBI Capital",
+            registrar = "Kfin Technologies Ltd.",
             importantDates = listOf(
-                ImportantDateItem("IPO Opens", "02-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("IPO Closes", "05-Sep-2026", DateStatus.COMPLETED),
-                ImportantDateItem("Listing Date", "12-Sep-2026", DateStatus.COMPLETED, "Listed at ₹710 (+31.5%)")
+                ImportantDateItem("IPO Opens", "09-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "11-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("Listing Date", "16-Sep-2026", DateStatus.COMPLETED, "Listed at ₹150 (+114.3%)")
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Kfin Technologies Ltd.",
+                registrarUrl = "https://ipostatus.kfintech.com/",
+                allotmentDate = "12-Sep-2026",
+                isAvailable = true,
+                note = "Allotment declared on KFintech portal."
             )
         )
     )

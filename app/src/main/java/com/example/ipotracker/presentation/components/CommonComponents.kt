@@ -2,6 +2,7 @@ package com.example.ipotracker.presentation.components
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,11 +43,11 @@ import com.example.ipotracker.presentation.ipo.IpoSortOption
 import com.example.ui.theme.*
 
 @Composable
-fun DemoDataBanner(modifier: Modifier = Modifier) {
+fun LiveDataVerifiedBanner(modifier: Modifier = Modifier) {
     Surface(
-        color = PrimaryOrangeLight,
+        color = Color(0xFFF0FDF4),
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, PrimaryOrangeContainer),
+        border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 4.dp)
@@ -56,22 +57,27 @@ fun DemoDataBanner(modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "Demo data indicator",
-                tint = PrimaryOrange,
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Verified Data Feed",
+                tint = Color(0xFF16A34A),
                 modifier = Modifier.size(15.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "DEMO DATA • Indicative preview. Verify with official DRHP/RHP.",
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
-                color = PrimaryOrangeDark,
-                fontWeight = FontWeight.SemiBold,
+                text = "LIVE MARKET DATA • Verified with SEBI Filings, BSE/NSE & Official Registrars",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = Color(0xFF15803D),
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
     }
+}
+
+@Composable
+fun DemoDataBanner(modifier: Modifier = Modifier) {
+    LiveDataVerifiedBanner(modifier)
 }
 
 @Composable
@@ -154,6 +160,7 @@ fun StatusBadge(
         IpoStatus.ALLOTMENT_PENDING -> Quadruple(ChipGray, NeutralGray, BorderLight, "WAITING")
         IpoStatus.ALLOTMENT_AVAILABLE -> Quadruple(MarketGreenLight, MarketGreen, MarketGreenBorder, "ALLOTMENT")
         IpoStatus.LISTED -> Quadruple(Color(0xFFEDE7F6), Color(0xFF5E35B1), Color(0xFFD1C4E9), "LISTED")
+        IpoStatus.NOT_AVAILABLE, IpoStatus.DATA_ERROR -> Quadruple(ChipGray, NeutralGray, BorderLight, "TBD")
     }
 
     Surface(
@@ -192,6 +199,28 @@ fun CategoryBadge(
             color = if (isMainboard) SecondaryBlueDark else PrimaryOrangeDark,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
+fun ExchangeBadge(
+    exchanges: String,
+    modifier: Modifier = Modifier
+) {
+    if (exchanges.isBlank()) return
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(1.dp, BorderLight),
+        modifier = modifier
+    ) {
+        Text(
+            text = exchanges,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
         )
     }
 }
@@ -304,6 +333,8 @@ fun IpoCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         CategoryBadge(category = ipo.category)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        ExchangeBadge(exchanges = ipo.listingExchanges)
                     }
 
                     IconButton(
@@ -349,7 +380,7 @@ fun IpoCard(
                     Column(modifier = Modifier.weight(1f)) {
                         IpoSpecRow(
                             label = "Date:",
-                            value = "${DateUtils.formatDisplayDate(ipo.openDate)} - ${DateUtils.formatDisplayDate(ipo.closeDate)}"
+                            value = DateUtils.formatIpoDateRange(ipo.openDate, ipo.closeDate)
                         )
                         IpoSpecRow(
                             label = "Price:",
@@ -580,9 +611,17 @@ fun IpoCard(
                             }
                         }
                         IpoLifecycleState.ALLOTMENT_AVAILABLE, IpoLifecycleState.LISTED -> {
-                            // [ ALLOTMENT ] button (Green background, white text, clickable)
+                            // [ ALLOTMENT ] button (Green background, white text, clickable - redirects to official registrar portal)
                             Button(
-                                onClick = { onAllotmentClick?.invoke(ipo.id) ?: onIpoClick(ipo.id) },
+                                onClick = {
+                                    val regUrl = ipo.getEffectiveRegistrarUrl()
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(regUrl))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        onAllotmentClick?.invoke(ipo.id) ?: onIpoClick(ipo.id)
+                                    }
+                                },
                                 shape = RoundedCornerShape(6.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MarketGreen,

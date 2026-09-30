@@ -1,21 +1,74 @@
 package com.example.ipotracker.utils
 
+import android.util.Log
+import com.example.ipotracker.data.model.IpoItem
+import com.example.ipotracker.data.model.IpoStatus
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 import java.util.concurrent.TimeUnit
 
+/**
+ * Centralized Date & Timezone Utility.
+ * Enforces Indian Standard Time (IST / Asia/Kolkata) across all IPO lifecycle status calculations.
+ */
 object DateUtils {
-    private val displayFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
-    private val timestampFormat = SimpleDateFormat("dd-MMM-yyyy HH:mm", Locale.ENGLISH)
-    private val parseFormat = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
+
+    private const val TAG = "DateUtils"
+
+    // Authoritative TimeZone: Indian Standard Time (IST / UTC+05:30)
+    val IST_TIME_ZONE: TimeZone = TimeZone.getTimeZone("Asia/Kolkata")
+
+    private val supportedDatePatterns = listOf(
+        "yyyy-MM-dd",
+        "dd-MMM-yyyy",
+        "dd MMM yyyy",
+        "d-MMM-yyyy",
+        "d MMM yyyy",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS",
+        "yyyy-MM-dd'T'HH:mm:ssXXX",
+        "yyyy-MM-dd'T'HH:mm:ssZ",
+        "dd/MM/yyyy",
+        "dd-MM-yyyy"
+    )
+
+    private val displayFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH).apply {
+        timeZone = IST_TIME_ZONE
+    }
+
+    private val timestampFormat = SimpleDateFormat("dd-MMM-yyyy HH:mm", Locale.ENGLISH).apply {
+        timeZone = IST_TIME_ZONE
+    }
+
+    private val parseFormat = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).apply {
+        timeZone = IST_TIME_ZONE
+    }
 
     fun formatDisplayDate(dateStr: String): String {
         return try {
-            val date = parseFormat.parse(dateStr) ?: return dateStr
-            displayFormat.format(date)
+            val cal = parseToIstCalendar(dateStr) ?: return dateStr
+            displayFormat.format(cal.time)
         } catch (e: Exception) {
             dateStr
+        }
+    }
+
+    /**
+     * Formats date range as "28 Sep - 30 Sep 2026"
+     */
+    fun formatIpoDateRange(openDateStr: String, closeDateStr: String): String {
+        return try {
+            val d1 = parseToIstCalendar(openDateStr)
+            val d2 = parseToIstCalendar(closeDateStr)
+            if (d1 != null && d2 != null) {
+                val f = SimpleDateFormat("dd MMM", Locale.ENGLISH).apply { timeZone = IST_TIME_ZONE }
+                val y = SimpleDateFormat("yyyy", Locale.ENGLISH).apply { timeZone = IST_TIME_ZONE }
+                "${f.format(d1.time)} - ${f.format(d2.time)} ${y.format(d2.time)}"
+            } else {
+                "${formatDisplayDate(openDateStr)} - ${formatDisplayDate(closeDateStr)}"
+            }
+        } catch (e: Exception) {
+            "${formatDisplayDate(openDateStr)} - ${formatDisplayDate(closeDateStr)}"
         }
     }
 
@@ -24,22 +77,47 @@ object DateUtils {
     }
 
     fun formatDisplayDateTime(timestamp: Long = System.currentTimeMillis()): String {
-        return SimpleDateFormat("dd-MMM-yyyy HH:mm:ss", Locale.ENGLISH).format(Date(timestamp))
+        val sdf = SimpleDateFormat("dd-MMM-yyyy HH:mm:ss 'IST'", Locale.ENGLISH)
+        sdf.timeZone = IST_TIME_ZONE
+        return sdf.format(Date(timestamp))
     }
 
     /**
-     * Calculates countdown string from closing date "yyyy-MM-dd HH:mm" or "yyyy-MM-dd"
+     * Parses a date string into an IST Calendar object across multiple standard formats.
+     */
+    fun parseToIstCalendar(dateStr: String?): Calendar? {
+        if (dateStr.isNullOrBlank() || dateStr == "-" || dateStr == "--") return null
+        val clean = dateStr.trim()
+        for (pattern in supportedDatePatterns) {
+            try {
+                val sdf = SimpleDateFormat(pattern, Locale.ENGLISH).apply {
+                    timeZone = IST_TIME_ZONE
+                    isLenient = false
+                }
+                val parsed = sdf.parse(clean)
+                if (parsed != null) {
+                    val cal = Calendar.getInstance(IST_TIME_ZONE)
+                    cal.time = parsed
+                    return cal
+                }
+            } catch (_: Exception) {}
+        }
+        return null
+    }
+
+    /**
+     * Calculates countdown string from closing date in IST.
      */
     fun getCountdownString(closingDateStr: String): String {
         return try {
-            val targetDate = if (closingDateStr.contains(" ")) {
-                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).parse(closingDateStr)
-            } else {
-                // assume 17:00 IST market close
-                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH).parse("$closingDateStr 17:00")
-            } ?: return "Check schedule"
+            val closeCal = parseToIstCalendar(closingDateStr) ?: return "Check schedule"
+            // Default market close time: 17:30 IST on close date
+            closeCal.set(Calendar.HOUR_OF_DAY, 17)
+            closeCal.set(Calendar.MINUTE, 30)
+            closeCal.set(Calendar.SECOND, 0)
+            closeCal.set(Calendar.MILLISECOND, 0)
 
-            val diff = targetDate.time - System.currentTimeMillis()
+            val diff = closeCal.timeInMillis - System.currentTimeMillis()
             if (diff <= 0) {
                 return "Closed"
             }
@@ -56,5 +134,131 @@ object DateUtils {
         } catch (e: Exception) {
             "Open"
         }
+    }
+
+    /**
+     * Centralized IPO Status Calculator.
+     * Enforces the business rules using Indian Standard Time (IST):
+     *
+     * 1. OPEN Condition:
+     *    CurrentDateTime >= OpenDate 00:00:00 IST AND CurrentDateTime < CloseDate 17:30:00 IST
+     *
+     * 2. CLOSED Condition:
+     *    CurrentDateTime >= CloseDate 17:30:00 IST
+     *
+     * 3. UPCOMING Condition:
+     *    CurrentDateTime < OpenDate 00:00:00 IST
+     *
+     * 4. Missing Dates:
+     *    Returns "DATA_ERROR" / "NOT_AVAILABLE" without guessing or fabricating dates.
+     */
+    fun getIPOStatus(
+        openDateStr: String?,
+        closeDateStr: String?,
+        checkInstantMillis: Long = System.currentTimeMillis()
+    ): String {
+        return calculateIpoStatus(openDateStr, closeDateStr, checkInstantMillis).name
+    }
+
+    fun getIPOStatus(
+        ipo: IpoItem,
+        checkInstantMillis: Long = System.currentTimeMillis()
+    ): String {
+        return getIPOStatus(ipo.openDate, ipo.closeDate, checkInstantMillis)
+    }
+
+    /**
+     * Core status calculation returning type-safe IpoStatus enum.
+     */
+    fun calculateIpoStatus(
+        openDateStr: String?,
+        closeDateStr: String?,
+        checkInstantMillis: Long = System.currentTimeMillis()
+    ): IpoStatus {
+        if (openDateStr.isNullOrBlank() || closeDateStr.isNullOrBlank() ||
+            openDateStr == "-" || closeDateStr == "--" || closeDateStr == "-") {
+            try { Log.w(TAG, "Validation Warning: Missing openDate or closeDate. Marking as NOT_AVAILABLE.") } catch (_: Throwable) {}
+            return IpoStatus.NOT_AVAILABLE
+        }
+
+        val openCal = parseToIstCalendar(openDateStr)
+        val closeCal = parseToIstCalendar(closeDateStr)
+
+        if (openCal == null || closeCal == null) {
+            try { Log.w(TAG, "Validation Error: Could not parse dates: open='$openDateStr', close='$closeDateStr'") } catch (_: Throwable) {}
+            return IpoStatus.DATA_ERROR
+        }
+
+        // Set Open Bound: OpenDate 00:00:00.000 IST
+        openCal.set(Calendar.HOUR_OF_DAY, 0)
+        openCal.set(Calendar.MINUTE, 0)
+        openCal.set(Calendar.SECOND, 0)
+        openCal.set(Calendar.MILLISECOND, 0)
+        val openMillis = openCal.timeInMillis
+
+        // Set Close Bound: CloseDate 17:30:00.000 IST
+        closeCal.set(Calendar.HOUR_OF_DAY, 17)
+        closeCal.set(Calendar.MINUTE, 30)
+        closeCal.set(Calendar.SECOND, 0)
+        closeCal.set(Calendar.MILLISECOND, 0)
+        val closeMillis = closeCal.timeInMillis
+
+        return when {
+            checkInstantMillis < openMillis -> IpoStatus.UPCOMING
+            checkInstantMillis < closeMillis -> IpoStatus.OPEN
+            else -> IpoStatus.CLOSED
+        }
+    }
+
+    /**
+     * Effective status calculation that accounts for post-close stages (Allotment & Listing)
+     * while strictly maintaining the 17:30:00 IST open/closed threshold.
+     */
+    fun calculateEffectiveStatus(
+        openDateStr: String?,
+        closeDateStr: String?,
+        allotmentDateStr: String? = null,
+        listingDateStr: String? = null,
+        fallbackStatus: IpoStatus = IpoStatus.UPCOMING,
+        checkInstantMillis: Long = System.currentTimeMillis()
+    ): IpoStatus {
+        val baseStatus = calculateIpoStatus(openDateStr, closeDateStr, checkInstantMillis)
+
+        if (baseStatus == IpoStatus.NOT_AVAILABLE || baseStatus == IpoStatus.DATA_ERROR) {
+            return fallbackStatus
+        }
+
+        if (baseStatus == IpoStatus.UPCOMING || baseStatus == IpoStatus.OPEN) {
+            return baseStatus
+        }
+
+        // baseStatus is CLOSED - check if it has progressed to LISTED or ALLOTMENT_AVAILABLE
+        if (!listingDateStr.isNullOrBlank()) {
+            val listingCal = parseToIstCalendar(listingDateStr)
+            if (listingCal != null) {
+                listingCal.set(Calendar.HOUR_OF_DAY, 10) // 10:00 AM IST market listing
+                listingCal.set(Calendar.MINUTE, 0)
+                listingCal.set(Calendar.SECOND, 0)
+                listingCal.set(Calendar.MILLISECOND, 0)
+                if (checkInstantMillis >= listingCal.timeInMillis) {
+                    return IpoStatus.LISTED
+                }
+            }
+        }
+
+        if (!allotmentDateStr.isNullOrBlank()) {
+            val allotmentCal = parseToIstCalendar(allotmentDateStr)
+            if (allotmentCal != null) {
+                allotmentCal.set(Calendar.HOUR_OF_DAY, 0)
+                allotmentCal.set(Calendar.MINUTE, 0)
+                allotmentCal.set(Calendar.SECOND, 0)
+                allotmentCal.set(Calendar.MILLISECOND, 0)
+                if (checkInstantMillis >= allotmentCal.timeInMillis) {
+                    return IpoStatus.ALLOTMENT_AVAILABLE
+                }
+            }
+        }
+
+        return IpoStatus.CLOSED
     }
 }

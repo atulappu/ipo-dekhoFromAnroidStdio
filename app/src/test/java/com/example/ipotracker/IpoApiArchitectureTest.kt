@@ -41,25 +41,25 @@ class IpoApiArchitectureTest {
             symbol = "TESTSOLAR",
             category = "MAINBOARD",
             status = "OPEN",
-            priceBandMin = 1850.0,
-            priceBandMax = 1920.0,
-            lotSize = 7,
-            minInvestment = 13440.0,
-            issueSizeCr = 14500.0,
-            freshIssueCr = 10000.0,
-            ofsCr = 4500.0,
-            openDate = "2026-09-25",
-            closeDate = "2026-09-28",
-            allotmentDate = "2026-09-29",
-            listingDate = "2026-10-01",
-            currentGmp = 480.0,
-            estimatedListingPrice = 2400.0,
-            estimatedGainPercent = 25.0,
-            lastGmpUpdated = "26 Sep, 17:00",
-            currentSubscriptionTimes = 6.39,
-            qibTimes = 8.24,
-            niiTimes = 5.42,
-            retailTimes = 4.18
+            priceBandMinCamel = 1850.0,
+            priceBandMaxCamel = 1920.0,
+            lotSizeCamel = 7,
+            minInvestmentCamel = 13440.0,
+            issueSizeCrCamel = 14500.0,
+            freshIssueCrCamel = 10000.0,
+            ofsCrCamel = 4500.0,
+            openDateCamel = "2026-09-25",
+            closeDateCamel = "2026-09-28",
+            allotmentDateCamel = "2026-09-29",
+            listingDateCamel = "2026-10-01",
+            currentGmpCamel = 480.0,
+            estimatedListingPriceCamel = 2400.0,
+            estimatedGainPercentCamel = 25.0,
+            lastGmpUpdatedCamel = "26 Sep, 17:00",
+            currentSubscriptionTimesCamel = 6.39,
+            qibTimesCamel = 8.24,
+            niiTimesCamel = 5.42,
+            retailTimesCamel = 4.18
         )
 
         val domain = IpoDtoMapper.mapIpoDtoToDomain(dto)
@@ -89,10 +89,10 @@ class IpoApiArchitectureTest {
             symbol = null,
             category = "SME",
             status = "UPCOMING",
-            priceBandMin = null,
-            priceBandMax = 120.0,
-            lotSize = 1000,
-            currentGmp = null
+            priceBandMinCamel = null,
+            priceBandMaxCamel = 120.0,
+            lotSizeCamel = 1000,
+            currentGmpCamel = null
         )
 
         val domain = IpoDtoMapper.mapIpoDtoToDomain(dto)
@@ -112,8 +112,8 @@ class IpoApiArchitectureTest {
             name = "NIFTY 50",
             value = "25,790.95",
             change = "+112.40",
-            percentChange = 0.44,
-            isPositive = true
+            percentChangeCamel = 0.44,
+            isPositiveCamel = true
         )
 
         val domain = IpoDtoMapper.mapMarketIndexDtoToDomain(dto)
@@ -128,15 +128,15 @@ class IpoApiArchitectureTest {
     @Test
     fun testSubscriptionDetailsDtoMapper() {
         val dto = SubscriptionDetailsDto(
-            overallTimes = 6.39,
-            qibTimes = 8.24,
-            niiTimes = 5.42,
-            retailTimes = 4.18,
-            categoryRows = listOf(
-                SubscriptionRowDto(category = "QIB", offeredShares = 5000000L, appliedShares = 41200000L, times = 8.24),
-                SubscriptionRowDto(category = "Retail", offeredShares = 8000000L, appliedShares = 33440000L, times = 4.18)
+            overallTimesCamel = 6.39,
+            qibTimesCamel = 8.24,
+            niiTimesCamel = 5.42,
+            retailTimesCamel = 4.18,
+            categoryRowsCamel = listOf(
+                SubscriptionRowDto(category = "QIB", offeredSharesCamel = 5000000L, appliedSharesCamel = 41200000L, times = 8.24),
+                SubscriptionRowDto(category = "Retail", offeredSharesCamel = 8000000L, appliedSharesCamel = 33440000L, times = 4.18)
             ),
-            lastUpdated = "26-Sep-2026 17:05:26"
+            lastUpdatedCamel = "26-Sep-2026 17:05:26"
         )
 
         val domain = IpoDtoMapper.mapSubscriptionDetailsToDomain(dto)

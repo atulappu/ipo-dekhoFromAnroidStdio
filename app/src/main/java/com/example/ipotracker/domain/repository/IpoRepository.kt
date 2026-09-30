@@ -21,4 +21,11 @@ interface IpoRepository {
     suspend fun deleteSearchQuery(query: String)
     suspend fun clearSearchHistory()
     suspend fun refreshData(): Result<Unit>
+    fun getRegistrars(): Flow<List<com.example.ipotracker.data.model.RegistrarItem>>
+    suspend fun updateRegistrarUrl(id: String, newUrl: String, comments: String? = null, modifiedBy: String = "Admin"): Result<Unit>
+    suspend fun saveRegistrar(item: com.example.ipotracker.data.model.RegistrarItem): Result<Unit>
+    fun getExchangeConfigs(): Flow<List<com.example.ipotracker.data.local.entity.ExchangeConfigEntity>>
+    suspend fun updateExchangeUrl(key: String, newUrl: String): Result<Unit>
+    suspend fun resetExchangeUrls(): Result<Unit>
+    suspend fun syncFromExchanges(): Result<Int>
 }

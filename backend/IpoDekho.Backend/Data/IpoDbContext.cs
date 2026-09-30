@@ -12,6 +12,27 @@ namespace IpoDekho.Backend.Data
         public DbSet<GmpRecord> GmpHistory { get; set; } = null!;
         public DbSet<SubscriptionRecord> Subscriptions { get; set; } = null!;
         public DbSet<AdminNoticeRecord> AdminNotices { get; set; } = null!;
+        public DbSet<ExchangeConfigRecord> ExchangeConfigs { get; set; } = null!;
+    }
+
+    [Table("ExchangeConfigs")]
+    public class ExchangeConfigRecord
+    {
+        [Key]
+        [MaxLength(50)]
+        public string ExchangeKey { get; set; } = string.Empty; // "NSE", "BSE"
+
+        [Required]
+        [MaxLength(500)]
+        public string SourceUrl { get; set; } = string.Empty;
+
+        [MaxLength(500)]
+        public string DefaultUrl { get; set; } = string.Empty;
+
+        public bool IsActive { get; set; } = true;
+        public DateTimeOffset? LastSyncedAt { get; set; }
+        public string? LastStatus { get; set; } = "IDLE";
+        public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 
     [Table("Ipos")]
@@ -27,6 +48,9 @@ namespace IpoDekho.Backend.Data
 
         [MaxLength(50)]
         public string? Symbol { get; set; }
+
+        [MaxLength(50)]
+        public string Exchange { get; set; } = "BSE, NSE";
 
         [MaxLength(20)]
         public string Type { get; set; } = "MAINBOARD"; // MAINBOARD / SME
