@@ -623,6 +623,53 @@ object MockIpoDataSource {
         ),
 
         // =========================================================================
+        // OPEN SME IPO: VANS Electroengineerings Ltd (BSE SME)
+        // Data verified against BSE SME & InvestorGain live feed
+        // =========================================================================
+        IpoItem(
+            id = "ipo-vans-electroengineerings",
+            name = "VANS Electroengineerings Ltd",
+            symbol = "VANSELEC",
+            category = IpoCategory.SME,
+            status = IpoStatus.OPEN,
+            priceBandMin = 118.0,
+            priceBandMax = 118.0,
+            lotSize = 1200,
+            minInvestment = 141600.0,
+            issueSizeCr = 33.98,
+            freshIssueCr = 33.98,
+            ofsCr = 0.0,
+            openDate = "29-Sep-2026",
+            closeDate = "01-Oct-2026",
+            allotmentDate = "05-Oct-2026",
+            listingDate = "07-Oct-2026",
+            currentGmp = 90.0,
+            estimatedListingPrice = 208.0,
+            estimatedGainPercent = 76.27,
+            lastGmpUpdated = "30-Sep-2026 16:37 IST",
+            currentSubscriptionTimes = 53.79,
+            description = "VANS Electroengineerings Ltd is a specialized provider of electroengineering solutions, power infrastructure, and electrical switchgear assemblies.",
+            sector = "Capital Goods - Electrical Equipment",
+            listingExchanges = "BSE SME",
+            faceValue = 10.0,
+            leadManagers = "Pantomath Capital Advisors Pvt Ltd",
+            registrar = "MUFG Intime India Pvt.Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "29-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "01-Oct-2026", DateStatus.ACTIVE, "Bidding Active"),
+                ImportantDateItem("Basis of Allotment", "05-Oct-2026", DateStatus.UPCOMING),
+                ImportantDateItem("Listing Date", "07-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "MUFG Intime India Pvt.Ltd.",
+                registrarUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
+                allotmentDate = "05-Oct-2026",
+                isAvailable = false
+            ),
+            isDemoData = false
+        ),
+
+        // =========================================================================
         // 11. OPEN SME IPO: Papadmalji Agro Foods Ltd (NSE SME)
         // Data verified against user's NSE All Upcoming Issues screenshot
         // =========================================================================
@@ -853,14 +900,16 @@ object MockIpoDataSource {
         ),
 
         // =========================================================================
-        // 16. UPCOMING MAINBOARD IPO: Garuda Construction and Engineering Ltd
+        // 16. HISTORICAL MAINBOARD IPO: Garuda Construction and Engineering Ltd (Listed Oct 2024)
         // =========================================================================
         IpoItem(
             id = "ipo-garuda",
             name = "Garuda Construction and Engineering Ltd",
             symbol = "GARUDA",
             category = IpoCategory.MAINBOARD,
-            status = IpoStatus.UPCOMING,
+            status = IpoStatus.LISTED,
+            listingStatus = ListingStatus.LISTED,
+            allotmentStatus = AllotmentStatus.AVAILABLE,
             priceBandMin = 90.0,
             priceBandMax = 95.0,
             lotSize = 157,
@@ -868,15 +917,19 @@ object MockIpoDataSource {
             issueSizeCr = 264.10,
             freshIssueCr = 173.85,
             ofsCr = 90.25,
-            openDate = "08-Oct-2026",
-            closeDate = "10-Oct-2026",
-            allotmentDate = "11-Oct-2026",
-            listingDate = "15-Oct-2026",
-            currentGmp = 22.0,
-            estimatedListingPrice = 117.0,
-            estimatedGainPercent = 23.16,
-            lastGmpUpdated = "30-Sep-2026 09:30 AM",
-            currentSubscriptionTimes = 0.0,
+            openDate = "08-Oct-2024",
+            closeDate = "10-Oct-2024",
+            allotmentDate = "11-Oct-2024",
+            listingDate = "15-Oct-2024",
+            listingPrice = 105.0,
+            listingGainPercent = 10.53,
+            currentMarketPrice = 98.40,
+            currentReturnPercent = 3.58,
+            currentGmp = 0.0,
+            estimatedListingPrice = 105.0,
+            estimatedGainPercent = 10.53,
+            lastGmpUpdated = "Listed on NSE / BSE",
+            currentSubscriptionTimes = 7.55,
             description = "Garuda Construction provides end-to-end civil construction for residential, commercial, industrial, and infrastructure projects across India.",
             sector = "Construction & Infrastructure",
             listingExchanges = "BSE, NSE",
@@ -884,28 +937,33 @@ object MockIpoDataSource {
             leadManagers = "Corpwis Advisors Pvt Ltd",
             registrar = "MUFG Intime India Pvt.Ltd.",
             importantDates = listOf(
-                ImportantDateItem("IPO Opens", "08-Oct-2026", DateStatus.UPCOMING),
-                ImportantDateItem("IPO Closes", "10-Oct-2026", DateStatus.UPCOMING),
-                ImportantDateItem("Basis of Allotment", "11-Oct-2026", DateStatus.UPCOMING),
-                ImportantDateItem("Listing Date", "15-Oct-2026", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Opens", "08-Oct-2024", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "10-Oct-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Basis of Allotment", "11-Oct-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Listing Date", "15-Oct-2024", DateStatus.COMPLETED, "Listed at ₹105 (+10.5%)")
             ),
             allotmentInfo = AllotmentInfo(
                 registrarName = "MUFG Intime India Pvt.Ltd.",
                 registrarUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html",
-                allotmentDate = "11-Oct-2026",
-                isAvailable = false
-            )
+                allotmentDate = "11-Oct-2024",
+                isAvailable = true,
+                note = "Allotment declared on MUFG Intime portal."
+            ),
+            sourceId = "SRC_EXCHANGE_HISTORICAL",
+            isSourceVerified = true
         ),
 
         // =========================================================================
-        // 17. UPCOMING MEGA MAINBOARD IPO: Hyundai Motor India Ltd
+        // 17. HISTORICAL MEGA MAINBOARD IPO: Hyundai Motor India Ltd (Listed Oct 2024)
         // =========================================================================
         IpoItem(
             id = "ipo-hyundai",
             name = "Hyundai Motor India Ltd",
             symbol = "HYUNDAI",
             category = IpoCategory.MAINBOARD,
-            status = IpoStatus.UPCOMING,
+            status = IpoStatus.LISTED,
+            listingStatus = ListingStatus.LISTED,
+            allotmentStatus = AllotmentStatus.AVAILABLE,
             priceBandMin = 1865.0,
             priceBandMax = 1960.0,
             lotSize = 7,
@@ -913,15 +971,19 @@ object MockIpoDataSource {
             issueSizeCr = 27870.16,
             freshIssueCr = 0.0,
             ofsCr = 27870.16,
-            openDate = "15-Oct-2026",
-            closeDate = "17-Oct-2026",
-            allotmentDate = "18-Oct-2026",
-            listingDate = "22-Oct-2026",
-            currentGmp = 145.0,
-            estimatedListingPrice = 2105.0,
-            estimatedGainPercent = 7.40,
-            lastGmpUpdated = "30-Sep-2026 11:15 AM",
-            currentSubscriptionTimes = 0.0,
+            openDate = "15-Oct-2024",
+            closeDate = "17-Oct-2024",
+            allotmentDate = "18-Oct-2024",
+            listingDate = "22-Oct-2024",
+            listingPrice = 1934.0,
+            listingGainPercent = -1.33,
+            currentMarketPrice = 1790.0,
+            currentReturnPercent = -8.67,
+            currentGmp = 0.0,
+            estimatedListingPrice = 1934.0,
+            estimatedGainPercent = -1.33,
+            lastGmpUpdated = "Listed on NSE / BSE",
+            currentSubscriptionTimes = 2.37,
             description = "Hyundai Motor India is India's second largest passenger vehicle manufacturer with popular models like Creta, Venue, Verna, and Ioniq 5 EV.",
             sector = "Automobile - 4 Wheeler OEM",
             listingExchanges = "BSE, NSE",
@@ -929,17 +991,20 @@ object MockIpoDataSource {
             leadManagers = "Kotak Mahindra, Morgan Stanley, Citigroup, HSBC",
             registrar = "Kfin Technologies Ltd.",
             importantDates = listOf(
-                ImportantDateItem("IPO Opens", "15-Oct-2026", DateStatus.UPCOMING),
-                ImportantDateItem("IPO Closes", "17-Oct-2026", DateStatus.UPCOMING),
-                ImportantDateItem("Basis of Allotment", "18-Oct-2026", DateStatus.UPCOMING),
-                ImportantDateItem("Listing Date", "22-Oct-2026", DateStatus.UPCOMING)
+                ImportantDateItem("IPO Opens", "15-Oct-2024", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "17-Oct-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Basis of Allotment", "18-Oct-2024", DateStatus.COMPLETED),
+                ImportantDateItem("Listing Date", "22-Oct-2024", DateStatus.COMPLETED, "Listed at ₹1934 (-1.3%)")
             ),
             allotmentInfo = AllotmentInfo(
                 registrarName = "Kfin Technologies Ltd.",
                 registrarUrl = "https://ipostatus.kfintech.com/",
-                allotmentDate = "18-Oct-2026",
-                isAvailable = false
-            )
+                allotmentDate = "18-Oct-2024",
+                isAvailable = true,
+                note = "Allotment declared on Kfin Technologies portal."
+            ),
+            sourceId = "SRC_EXCHANGE_HISTORICAL",
+            isSourceVerified = true
         ),
 
         // =========================================================================

@@ -119,4 +119,95 @@ class IpoOpenClosedStatusTest {
         val closeTime = getIstMillis(2026, 9, 3, 17, 30, 0)
         assertEquals(IpoStatus.CLOSED, DateUtils.calculateIpoStatus(altOpen, altClose, closeTime))
     }
+
+    @Test
+    fun testVansElectroengineerings_IssueTimeline_29Sep_to_01Oct() {
+        val vansOpen = "29-Sep-2026"
+        val vansClose = "01-Oct-2026"
+
+        // 1. 29-Sep-2026 00:00:00 IST -> OPEN
+        val timeDay1 = getIstMillis(2026, 9, 29, 0, 0, 0)
+        assertEquals(IpoStatus.OPEN, DateUtils.calculateIpoStatus(vansOpen, vansClose, timeDay1))
+        assertEquals("OPEN", DateUtils.getIPOStatus(vansOpen, vansClose, timeDay1))
+
+        // 2. 30-Sep-2026 12:00:00 IST -> OPEN (Current active bidding)
+        val timeDay2 = getIstMillis(2026, 9, 30, 12, 0, 0)
+        assertEquals(IpoStatus.OPEN, DateUtils.calculateIpoStatus(vansOpen, vansClose, timeDay2))
+        assertEquals("OPEN", DateUtils.getIPOStatus(vansOpen, vansClose, timeDay2))
+
+        // 3. 01-Oct-2026 17:29:59 IST -> OPEN
+        val timeJustBeforeClose = getIstMillis(2026, 10, 1, 17, 29, 59)
+        assertEquals(IpoStatus.OPEN, DateUtils.calculateIpoStatus(vansOpen, vansClose, timeJustBeforeClose))
+        assertEquals("OPEN", DateUtils.getIPOStatus(vansOpen, vansClose, timeJustBeforeClose))
+
+        // 4. 01-Oct-2026 17:30:00 IST -> CLOSED
+        val timeAtClose = getIstMillis(2026, 10, 1, 17, 30, 0)
+        assertEquals(IpoStatus.CLOSED, DateUtils.calculateIpoStatus(vansOpen, vansClose, timeAtClose))
+        assertEquals("CLOSED", DateUtils.getIPOStatus(vansOpen, vansClose, timeAtClose))
+
+        // 5. 02-Oct-2026 00:00:00 IST -> CLOSED
+        val timeAfterClose = getIstMillis(2026, 10, 2, 0, 0, 0)
+        assertEquals(IpoStatus.CLOSED, DateUtils.calculateIpoStatus(vansOpen, vansClose, timeAfterClose))
+        assertEquals("CLOSED", DateUtils.getIPOStatus(vansOpen, vansClose, timeAfterClose))
+    }
+
+    @Test
+    fun testDateParsingAllRequiredFormats() {
+        val testFormats = listOf(
+            "29-Sep-2026",
+            "29/09/2026",
+            "29-09-2026",
+            "2026-09-29",
+            "2026-09-29T00:00:00",
+            "2026-09-29T00:00:00+05:30",
+            "29-Sep",
+            "29-Sep   GMP: 90",
+            "29-Sep<br><small>GMP: 90</small>"
+        )
+
+        for (fmt in testFormats) {
+            val cal = DateUtils.parseToIstCalendar(fmt)
+            org.junit.Assert.assertNotNull("Format '$fmt' must parse successfully", cal)
+            cal?.let {
+                assertEquals("Year must be 2026 for '$fmt'", 2026, it.get(Calendar.YEAR))
+                assertEquals("Month must be September (8) for '$fmt'", Calendar.SEPTEMBER, it.get(Calendar.MONTH))
+                assertEquals("Day must be 29 for '$fmt'", 29, it.get(Calendar.DAY_OF_MONTH))
+            }
+        }
+
+        // Test 1-Oct format without year
+        val octCal = DateUtils.parseToIstCalendar("1-Oct")
+        org.junit.Assert.assertNotNull("1-Oct must parse successfully", octCal)
+        octCal?.let {
+            assertEquals(2026, it.get(Calendar.YEAR))
+            assertEquals(Calendar.OCTOBER, it.get(Calendar.MONTH))
+            assertEquals(1, it.get(Calendar.DAY_OF_MONTH))
+        }
+    }
+
+    @Test
+    fun testVansElectroengineeringsInVerifiedMasterList() {
+        val vans = com.example.ipotracker.data.remote.MockIpoDataSource.ipoList.find {
+            it.name.contains("VANS", ignoreCase = true) || it.id.contains("vans", ignoreCase = true)
+        }
+        org.junit.Assert.assertNotNull("VANS Electroengineerings must be present in verified master IPO list", vans)
+        vans?.let {
+            assertEquals(com.example.ipotracker.data.model.IpoCategory.SME, it.category)
+            org.junit.Assert.assertTrue("Exchange must include BSE", it.listingExchanges.contains("BSE"))
+            assertEquals("29-Sep-2026", it.openDate)
+            assertEquals("01-Oct-2026", it.closeDate)
+
+            // Current test time: 30-Sep-2026 12:00:00 IST -> must be OPEN
+            val testTime = getIstMillis(2026, 9, 30, 12, 0, 0)
+            val effectiveStatus = DateUtils.calculateEffectiveStatus(
+                openDateStr = it.openDate,
+                closeDateStr = it.closeDate,
+                allotmentDateStr = it.allotmentDate,
+                listingDateStr = it.listingDate,
+                fallbackStatus = it.status,
+                checkInstantMillis = testTime
+            )
+            assertEquals(IpoStatus.OPEN, effectiveStatus)
+        }
+    }
 }

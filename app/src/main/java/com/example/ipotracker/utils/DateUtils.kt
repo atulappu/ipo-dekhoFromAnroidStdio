@@ -24,12 +24,25 @@ object DateUtils {
         "dd MMM yyyy",
         "d-MMM-yyyy",
         "d MMM yyyy",
+        "dd/MM/yyyy",
+        "d/M/yyyy",
+        "dd-MM-yyyy",
+        "d-M-yyyy",
         "yyyy-MM-dd'T'HH:mm:ss",
         "yyyy-MM-dd'T'HH:mm:ss.SSS",
         "yyyy-MM-dd'T'HH:mm:ssXXX",
-        "yyyy-MM-dd'T'HH:mm:ssZ",
-        "dd/MM/yyyy",
-        "dd-MM-yyyy"
+        "yyyy-MM-dd'T'HH:mm:ssZ"
+    )
+
+    private val supportedDatePatternsWithoutYear = listOf(
+        "dd-MMM",
+        "d-MMM",
+        "dd MMM",
+        "d MMM",
+        "dd/MM",
+        "d/M",
+        "dd-MM",
+        "d-M"
     )
 
     private val displayFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH).apply {
@@ -84,10 +97,16 @@ object DateUtils {
 
     /**
      * Parses a date string into an IST Calendar object across multiple standard formats.
+     * Sanitizes inputs by stripping HTML and extracting the clean date token.
      */
-    fun parseToIstCalendar(dateStr: String?): Calendar? {
+    fun parseToIstCalendar(dateStr: String?, defaultYear: Int = 2026): Calendar? {
         if (dateStr.isNullOrBlank() || dateStr == "-" || dateStr == "--") return null
-        val clean = dateStr.trim()
+        // Strip HTML tags and isolate date pattern
+        val noHtml = dateStr.replace(Regex("<[^>]*>"), " ").trim()
+        val dateMatch = Regex("\\d{1,4}[-/][0-9a-zA-Z]{1,4}(?:[-/]\\d{2,4})?(?:T\\d{2}:\\d{2}:\\d{2}(?:[+-]\\d{2}:\\d{2})?)?").find(noHtml)
+        val clean = dateMatch?.value ?: noHtml.split(Regex("\\s+")).firstOrNull() ?: noHtml
+
+        // 1. Try patterns with year
         for (pattern in supportedDatePatterns) {
             try {
                 val sdf = SimpleDateFormat(pattern, Locale.ENGLISH).apply {
@@ -102,6 +121,24 @@ object DateUtils {
                 }
             } catch (_: Exception) {}
         }
+
+        // 2. Try patterns without year (assign defaultYear, e.g. 2026)
+        for (pattern in supportedDatePatternsWithoutYear) {
+            try {
+                val sdf = SimpleDateFormat(pattern, Locale.ENGLISH).apply {
+                    timeZone = IST_TIME_ZONE
+                    isLenient = false
+                }
+                val parsed = sdf.parse(clean)
+                if (parsed != null) {
+                    val cal = Calendar.getInstance(IST_TIME_ZONE)
+                    cal.time = parsed
+                    cal.set(Calendar.YEAR, defaultYear)
+                    return cal
+                }
+            } catch (_: Exception) {}
+        }
+
         return null
     }
 
@@ -211,8 +248,35 @@ object DateUtils {
     }
 
     /**
+     * Checks if a given date string is in the future in IST.
+     */
+    fun isDateInFuture(dateStr: String?, checkInstantMillis: Long = System.currentTimeMillis()): Boolean {
+        if (dateStr.isNullOrBlank()) return false
+        val cal = parseToIstCalendar(dateStr) ?: return false
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis > checkInstantMillis
+    }
+
+    /**
+     * Checks if a given date string is in the past in IST.
+     */
+    fun isDateInPast(dateStr: String?, checkInstantMillis: Long = System.currentTimeMillis()): Boolean {
+        if (dateStr.isNullOrBlank()) return false
+        val cal = parseToIstCalendar(dateStr) ?: return false
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+        return cal.timeInMillis < checkInstantMillis
+    }
+
+    /**
      * Effective status calculation that accounts for post-close stages (Allotment & Listing)
      * while strictly maintaining the 17:30:00 IST open/closed threshold.
+     * Prevents historical or closed IPOs from ever appearing as UPCOMING.
      */
     fun calculateEffectiveStatus(
         openDateStr: String?,
@@ -222,17 +286,12 @@ object DateUtils {
         fallbackStatus: IpoStatus = IpoStatus.UPCOMING,
         checkInstantMillis: Long = System.currentTimeMillis()
     ): IpoStatus {
-        val baseStatus = calculateIpoStatus(openDateStr, closeDateStr, checkInstantMillis)
-
-        if (baseStatus == IpoStatus.NOT_AVAILABLE || baseStatus == IpoStatus.DATA_ERROR) {
-            return fallbackStatus
+        // Rule 1: An already listed or historically completed IPO can NEVER be UPCOMING or OPEN
+        if (fallbackStatus == IpoStatus.LISTED) {
+            return IpoStatus.LISTED
         }
 
-        if (baseStatus == IpoStatus.UPCOMING || baseStatus == IpoStatus.OPEN) {
-            return baseStatus
-        }
-
-        // baseStatus is CLOSED - check if it has progressed to LISTED or ALLOTMENT_AVAILABLE
+        // Rule 2: If Listing Date is in the past, status is strictly LISTED
         if (!listingDateStr.isNullOrBlank()) {
             val listingCal = parseToIstCalendar(listingDateStr)
             if (listingCal != null) {
@@ -246,19 +305,38 @@ object DateUtils {
             }
         }
 
-        if (!allotmentDateStr.isNullOrBlank()) {
-            val allotmentCal = parseToIstCalendar(allotmentDateStr)
-            if (allotmentCal != null) {
-                allotmentCal.set(Calendar.HOUR_OF_DAY, 0)
-                allotmentCal.set(Calendar.MINUTE, 0)
-                allotmentCal.set(Calendar.SECOND, 0)
-                allotmentCal.set(Calendar.MILLISECOND, 0)
-                if (checkInstantMillis >= allotmentCal.timeInMillis) {
-                    return IpoStatus.ALLOTMENT_AVAILABLE
+        // Rule 3: If Close Date is in the past, it CANNOT be UPCOMING or OPEN
+        if (!closeDateStr.isNullOrBlank()) {
+            val closeCal = parseToIstCalendar(closeDateStr)
+            if (closeCal != null) {
+                closeCal.set(Calendar.HOUR_OF_DAY, 17)
+                closeCal.set(Calendar.MINUTE, 30)
+                closeCal.set(Calendar.SECOND, 0)
+                closeCal.set(Calendar.MILLISECOND, 0)
+                if (checkInstantMillis >= closeCal.timeInMillis) {
+                    if (!allotmentDateStr.isNullOrBlank()) {
+                        val allotmentCal = parseToIstCalendar(allotmentDateStr)
+                        if (allotmentCal != null) {
+                            allotmentCal.set(Calendar.HOUR_OF_DAY, 0)
+                            allotmentCal.set(Calendar.MINUTE, 0)
+                            allotmentCal.set(Calendar.SECOND, 0)
+                            allotmentCal.set(Calendar.MILLISECOND, 0)
+                            if (checkInstantMillis >= allotmentCal.timeInMillis) {
+                                return IpoStatus.ALLOTMENT_AVAILABLE
+                            }
+                        }
+                    }
+                    return IpoStatus.CLOSED
                 }
             }
         }
 
-        return IpoStatus.CLOSED
+        val baseStatus = calculateIpoStatus(openDateStr, closeDateStr, checkInstantMillis)
+
+        if (baseStatus == IpoStatus.NOT_AVAILABLE || baseStatus == IpoStatus.DATA_ERROR) {
+            return if (fallbackStatus == IpoStatus.UPCOMING) IpoStatus.NOT_AVAILABLE else fallbackStatus
+        }
+
+        return baseStatus
     }
 }

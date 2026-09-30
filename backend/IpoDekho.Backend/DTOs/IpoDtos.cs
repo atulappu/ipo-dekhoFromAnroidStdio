@@ -24,6 +24,11 @@ namespace IpoDekho.Backend.DTOs
         public string? RegistrarName { get; set; }
         public string? RegistrarUrl { get; set; }
         public bool IsAllotmentOut { get; set; }
+        public string AllotmentStatus { get; set; } = "WAITING";
+        public bool AllotmentAvailable => IsAllotmentOut || AllotmentStatus == "AVAILABLE";
+        public string? AllotmentUrl => RegistrarUrl;
+        public string IpoId => Id;
+        public string CompanyName => Name;
         public DateTimeOffset UpdatedAt { get; set; }
     }
 

@@ -34,7 +34,80 @@ namespace IpoDekho.Backend.Services
 
         public static string GetIPOStatus(IpoRecord ipo, DateTimeOffset? checkTime = null)
         {
-            return CalculateStatus(ipo.OpenDate, ipo.CloseDate, checkTime);
+            var now = checkTime ?? DateTimeOffset.UtcNow;
+            var nowIst = TimeZoneInfo.ConvertTime(now, IstZone);
+
+            if (ipo.ListingDate.HasValue)
+            {
+                var listingDateIst = TimeZoneInfo.ConvertTime(ipo.ListingDate.Value, IstZone).Date;
+                var listingBound = new DateTimeOffset(listingDateIst.Year, listingDateIst.Month, listingDateIst.Day, 10, 0, 0, IstZone.BaseUtcOffset);
+                if (nowIst >= listingBound)
+                {
+                    return "LISTED";
+                }
+            }
+
+            var baseStatus = CalculateStatus(ipo.OpenDate, ipo.CloseDate, checkTime);
+            if (baseStatus == "CLOSED")
+            {
+                var allotment = GetAllotmentStatus(ipo, checkTime);
+                if (allotment == "AVAILABLE")
+                {
+                    return "ALLOTMENT_AVAILABLE";
+                }
+            }
+
+            return baseStatus;
+        }
+
+        /// <summary>
+        /// Centralized Allotment Availability Rule:
+        /// Possible values:
+        /// - NOT_AVAILABLE: IPO is not yet closed (UPCOMING or OPEN)
+        /// - WAITING: IPO is closed, but allotment is not yet available/declared
+        /// - AVAILABLE: IPO is closed, and validated allotment record or declaration exists
+        /// - DATA_ERROR: Invalid dates (e.g. OpenDate > CloseDate)
+        /// - SOURCE_UNAVAILABLE: Configured source was unreachable or returned an error
+        /// </summary>
+        public static string GetAllotmentStatus(IpoRecord ipo, DateTimeOffset? checkTime = null)
+        {
+            if (ipo.OpenDate.HasValue && ipo.CloseDate.HasValue && ipo.OpenDate.Value > ipo.CloseDate.Value)
+            {
+                return "DATA_ERROR";
+            }
+
+            var baseStatus = CalculateStatus(ipo.OpenDate, ipo.CloseDate, checkTime);
+            if (baseStatus == "UPCOMING" || baseStatus == "OPEN" || baseStatus == "NOT_AVAILABLE")
+            {
+                return "NOT_AVAILABLE";
+            }
+
+            if (ipo.ValidationStatus == "SOURCE_UNAVAILABLE")
+            {
+                return "SOURCE_UNAVAILABLE";
+            }
+
+            var now = checkTime ?? DateTimeOffset.UtcNow;
+            var nowIst = TimeZoneInfo.ConvertTime(now, IstZone);
+
+            // If explicitly marked allotment out in SQL or external source
+            if (ipo.IsAllotmentOut || ipo.AllotmentStatus == "AVAILABLE")
+            {
+                return "AVAILABLE";
+            }
+
+            // If AllotmentDate is present and current time has reached 00:00:00 IST on Allotment Date
+            if (ipo.AllotmentDate.HasValue)
+            {
+                var allotmentDateIst = TimeZoneInfo.ConvertTime(ipo.AllotmentDate.Value, IstZone).Date;
+                var allotmentBound = new DateTimeOffset(allotmentDateIst.Year, allotmentDateIst.Month, allotmentDateIst.Day, 0, 0, 0, IstZone.BaseUtcOffset);
+                if (nowIst >= allotmentBound)
+                {
+                    return "AVAILABLE";
+                }
+            }
+
+            return "WAITING";
         }
 
         public static string CalculateStatus(DateTimeOffset? openDate, DateTimeOffset? closeDate, DateTimeOffset? checkTime = null)

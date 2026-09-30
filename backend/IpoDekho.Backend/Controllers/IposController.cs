@@ -12,11 +12,13 @@ namespace IpoDekho.Backend.Controllers
     {
         private readonly IpoDbContext _context;
         private readonly IIpoScraperService _scraperService;
+        private readonly ILogger<IposController> _logger;
 
-        public IposController(IpoDbContext context, IIpoScraperService scraperService)
+        public IposController(IpoDbContext context, IIpoScraperService scraperService, ILogger<IposController> logger)
         {
             _context = context;
             _scraperService = scraperService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -30,10 +32,7 @@ namespace IpoDekho.Backend.Controllers
         {
             var query = _context.Ipos.AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(status) && status.ToUpper() != "ALL")
-            {
-                query = query.Where(i => i.Status == status);
-            }
+            // Do not filter on static database Status column; status is dynamically calculated below via IpoStatusCalculator
 
             if (!string.IsNullOrWhiteSpace(type) && type.ToUpper() != "ALL")
             {
@@ -68,7 +67,8 @@ namespace IpoDekho.Backend.Controllers
                 ListingDate = i.ListingDate,
                 RegistrarName = i.RegistrarName,
                 RegistrarUrl = i.RegistrarUrl,
-                IsAllotmentOut = i.IsAllotmentOut,
+                IsAllotmentOut = i.IsAllotmentOut || i.AllotmentStatus == "AVAILABLE",
+                AllotmentStatus = IpoStatusCalculator.GetAllotmentStatus(i),
                 UpdatedAt = i.UpdatedAt
             }).ToList();
 
@@ -76,6 +76,13 @@ namespace IpoDekho.Backend.Controllers
             {
                 var targetStatus = status.Trim().ToUpper();
                 list = list.Where(i => i.Status.Equals(targetStatus, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            var vansItem = list.FirstOrDefault(i => i.Name.Contains("Vans", StringComparison.OrdinalIgnoreCase));
+            if (vansItem != null)
+            {
+                _logger.LogInformation("[AUDIT] VANS_INCLUDED_IN_API: Name='{Name}', Status='{Status}', Type='{Type}', Open='{Open}', Close='{Close}'", 
+                    vansItem.Name, vansItem.Status, vansItem.Type, vansItem.OpenDate, vansItem.CloseDate);
             }
 
             return Ok(list);
@@ -122,7 +129,8 @@ namespace IpoDekho.Backend.Controllers
                 ListingDate = ipo.ListingDate,
                 RegistrarName = ipo.RegistrarName,
                 RegistrarUrl = ipo.RegistrarUrl,
-                IsAllotmentOut = ipo.IsAllotmentOut,
+                IsAllotmentOut = ipo.IsAllotmentOut || ipo.AllotmentStatus == "AVAILABLE",
+                AllotmentStatus = IpoStatusCalculator.GetAllotmentStatus(ipo),
                 UpdatedAt = ipo.UpdatedAt,
                 GmpHistory = gmpTicks,
                 Subscription = sub == null ? null : new SubscriptionDto

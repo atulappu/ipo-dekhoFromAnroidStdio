@@ -174,10 +174,16 @@ class IpoListViewModel(
         var result = ipos
 
         if (status != null) {
-            result = if (status.isClosed) {
-                result.filter { it.status.isClosed }
-            } else {
-                result.filter { it.status == status }
+            result = when {
+                status.isClosed -> result.filter { it.status.isClosed }
+                status == IpoStatus.UPCOMING -> result.filter {
+                    it.status == IpoStatus.UPCOMING &&
+                    !it.status.isClosed &&
+                    DateUtils.isDateInFuture(it.openDate) &&
+                    it.isSourceVerified &&
+                    !it.isDemoData
+                }
+                else -> result.filter { it.status == status }
             }
         }
 

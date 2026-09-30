@@ -216,7 +216,13 @@ data class IpoItem(
     val isDemoData: Boolean = false,
     val allotmentStatus: AllotmentStatus = AllotmentStatus.PENDING,
     val listingStatus: ListingStatus = ListingStatus.NOT_LISTED,
-    val liveMarketData: LiveMarketData? = null
+    val liveMarketData: LiveMarketData? = null,
+    val sourceId: String = "SRC_EXCHANGE_VERIFIED",
+    val sourceUrl: String = "",
+    val sourceUpdatedTime: String = "",
+    val fetchTime: String = "",
+    val externalId: String = "",
+    val isSourceVerified: Boolean = true
 ) {
     val lifecycleState: IpoLifecycleState
         get() {

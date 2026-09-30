@@ -21,6 +21,7 @@ import com.example.ipotracker.data.remote.MockIpoDataSource
 import com.example.ipotracker.data.remote.dto.UpdateExchangeUrlRequestDto
 import com.example.ipotracker.data.remote.exchange.ExchangeSyncEngine
 import com.example.ipotracker.domain.repository.IpoRepository
+import com.example.ipotracker.utils.DateUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
@@ -222,11 +223,26 @@ class IpoRepositoryImpl(
     }
 
     override fun getOpenIpos(): Flow<List<IpoItem>> {
-        return getAllIpos().map { list -> list.filter { it.status == IpoStatus.OPEN } }
+        return getAllIpos().map { list ->
+            val openList = list.filter { it.status == IpoStatus.OPEN }
+            val vans = openList.find { it.name.contains("Vans", ignoreCase = true) }
+            if (vans != null) {
+                Log.i(tag, "[AUDIT] VANS_INCLUDED_IN_OPEN_TAB: Name='${vans.name}', Category='${vans.category}', Exchange='${vans.listingExchanges}', Status='${vans.status}'")
+            }
+            openList
+        }
     }
 
     override fun getUpcomingIpos(): Flow<List<IpoItem>> {
-        return getAllIpos().map { list -> list.filter { it.status == IpoStatus.UPCOMING } }
+        return getAllIpos().map { list ->
+            list.filter { item ->
+                item.status == IpoStatus.UPCOMING &&
+                !item.status.isClosed &&
+                DateUtils.isDateInFuture(item.openDate) &&
+                item.isSourceVerified &&
+                !item.isDemoData
+            }
+        }
     }
 
     override fun getClosedIpos(): Flow<List<IpoItem>> {
