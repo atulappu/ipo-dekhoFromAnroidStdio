@@ -79,10 +79,7 @@ namespace IpoDekho.Backend.Services
                     var match = FindMatchingRecord(masterList, gmp.Name, gmp.Symbol, gmp.OpenDate, gmp.CloseDate);
                     if (match != null)
                     {
-                        if (gmp.Name.Contains("Vans", StringComparison.OrdinalIgnoreCase) || match.Name.Contains("Vans", StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogInformation("[AUDIT] VANS_IDENTITY_MATCHED: Successfully resolved identity '{Name}' to existing master issue '{Match}'", gmp.Name, match.Name);
-                        }
+                        _logger.LogInformation("[AUDIT] IDENTITY_MATCHED: Successfully resolved identity '{Name}' to existing master issue '{Match}'", gmp.Name, match.Name);
                         match.CurrentGmp = gmp.CurrentGmp;
                         match.EstimatedListingPrice = gmp.EstimatedListingPrice;
                         match.EstimatedGainPercent = gmp.EstimatedGainPercent;
@@ -96,6 +93,15 @@ namespace IpoDekho.Backend.Services
                         }
                         if (match.LotSize <= 1 && gmp.LotSize > 1) match.LotSize = gmp.LotSize;
                         if (match.IssueSizeCr <= 0 && gmp.IssueSizeCr > 0) match.IssueSizeCr = gmp.IssueSizeCr;
+
+                        if (gmp.AllotmentStatus == "AVAILABLE" || gmp.IsAllotmentOut)
+                        {
+                            match.AllotmentStatus = "AVAILABLE";
+                            match.IsAllotmentOut = true;
+                        }
+                        if (gmp.AllotmentDate.HasValue && !match.AllotmentDate.HasValue) match.AllotmentDate = gmp.AllotmentDate;
+                        if (!string.IsNullOrEmpty(gmp.RegistrarName)) match.RegistrarName = gmp.RegistrarName;
+                        if (!string.IsNullOrEmpty(gmp.RegistrarUrl)) match.RegistrarUrl = gmp.RegistrarUrl;
                     }
                     else
                     {
@@ -136,11 +142,8 @@ namespace IpoDekho.Backend.Services
                     {
                         candidate.AllotmentStatus = IpoStatusCalculator.GetAllotmentStatus(candidate);
                         candidate.Status = IpoStatusCalculator.GetIPOStatus(candidate);
-                        if (candidate.Name.Contains("Vans", StringComparison.OrdinalIgnoreCase) || candidate.Name.Contains("Orient", StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogInformation("[AUDIT] DATABASE_SAVED: Persisting new issue '{Name}', Exchange='{Exchange}', Type='{Type}', Status='{Status}', Allotment='{AllotmentStatus}'", 
-                                candidate.Name, candidate.Exchange, candidate.Type, candidate.Status, candidate.AllotmentStatus);
-                        }
+                        _logger.LogInformation("[AUDIT] DATABASE_SAVED: Persisting issue '{Name}', Exchange='{Exchange}', Type='{Type}', Status='{Status}', Allotment='{AllotmentStatus}'", 
+                            candidate.Name, candidate.Exchange, candidate.Type, candidate.Status, candidate.AllotmentStatus);
                         _context.Ipos.Add(candidate);
                         await _context.SaveChangesAsync();
 
@@ -222,14 +225,10 @@ namespace IpoDekho.Backend.Services
                         if (candidate.AllotmentDate.HasValue) existing.AllotmentDate = candidate.AllotmentDate;
                         if (!string.IsNullOrEmpty(candidate.RegistrarName)) existing.RegistrarName = candidate.RegistrarName;
                         if (!string.IsNullOrEmpty(candidate.RegistrarUrl)) existing.RegistrarUrl = candidate.RegistrarUrl;
-                        if (candidate.IsAllotmentOut) existing.IsAllotmentOut = true;
-
-                        var newAllotmentStatus = IpoStatusCalculator.GetAllotmentStatus(existing);
-                        if (candidate.AllotmentStatus == "AVAILABLE" || existing.IsAllotmentOut)
-                        {
-                            newAllotmentStatus = "AVAILABLE";
-                        }
-
+                        
+                        // Strict source verification: Only true if verified from candidate source
+                        existing.IsAllotmentOut = candidate.IsAllotmentOut;
+                        var newAllotmentStatus = candidate.IsAllotmentOut ? "AVAILABLE" : "WAITING";
                         existing.AllotmentStatus = newAllotmentStatus;
                         existing.Status = IpoStatusCalculator.GetIPOStatus(existing);
 
@@ -338,31 +337,89 @@ namespace IpoDekho.Backend.Services
                         var listingDt = ParseDate(rawListing);
                         var normName = NormalizeName(cleanName);
 
-                        var isAllottedBadge = col0Text.Contains("Allotted", StringComparison.OrdinalIgnoreCase) || col0Text.Contains("Allotment", StringComparison.OrdinalIgnoreCase);
-                        var nowIst = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, IpoStatusCalculator.IstZone);
-                        var isAllotmentAvailable = isAllottedBadge || (allotmentDt.HasValue && nowIst.Date >= TimeZoneInfo.ConvertTime(allotmentDt.Value, IpoStatusCalculator.IstZone).Date && closeDt.HasValue && nowIst >= closeDt.Value);
+                        var allAnchors = cols[0].SelectNodes(".//a");
+                        string? allotmentLink = null;
+                        var hasAllottedBadge = false;
+
+                        if (allAnchors != null)
+                        {
+                            foreach (var a in allAnchors)
+                            {
+                                var href = a.GetAttributeValue("href", "");
+                                var aText = a.InnerText ?? "";
+                                var aTitle = a.GetAttributeValue("title", "");
+                                
+                                if (aText.Contains("Allotted", StringComparison.OrdinalIgnoreCase) || 
+                                    aTitle.Contains("Allotted", StringComparison.OrdinalIgnoreCase) ||
+                                    a.InnerHtml.Contains("badge rounded-pill bg-success", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    hasAllottedBadge = true;
+                                    allotmentLink = href;
+                                    break;
+                                }
+                                else if (href.Contains("kfintech", StringComparison.OrdinalIgnoreCase) ||
+                                         href.Contains("bigshare", StringComparison.OrdinalIgnoreCase) ||
+                                         href.Contains("linkintime", StringComparison.OrdinalIgnoreCase) ||
+                                         href.Contains("mufg", StringComparison.OrdinalIgnoreCase) ||
+                                         href.Contains("maashitla", StringComparison.OrdinalIgnoreCase) ||
+                                         href.Contains("cameo", StringComparison.OrdinalIgnoreCase) ||
+                                         href.Contains("skyline", StringComparison.OrdinalIgnoreCase) ||
+                                         href.Contains("purva", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    allotmentLink = href;
+                                }
+                            }
+                        }
+
+                        if (cols[0].InnerHtml.Contains("badge rounded-pill bg-success", StringComparison.OrdinalIgnoreCase) && 
+                            cols[0].InnerHtml.Contains("Allotted", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hasAllottedBadge = true;
+                        }
+
+                        var isAllotmentAvailable = hasAllottedBadge;
 
                         string? regName = null;
-                        string? regUrl = null;
-                        if (col0Text.Contains("kfin", StringComparison.OrdinalIgnoreCase) || cleanName.Contains("Orient Cables", StringComparison.OrdinalIgnoreCase))
+                        string? regUrl = allotmentLink;
+
+                        if (!string.IsNullOrEmpty(allotmentLink))
                         {
-                            regName = "Kfin Technologies Ltd.";
-                            regUrl = "https://ipostatus.kfintech.com/";
-                        }
-                        else if (col0Text.Contains("maashitla", StringComparison.OrdinalIgnoreCase))
-                        {
-                            regName = "Maashitla Securities Pvt.Ltd.";
-                            regUrl = "https://maashitla.com/allotment-status/public-issues";
-                        }
-                        else if (col0Text.Contains("linkintime", StringComparison.OrdinalIgnoreCase) || col0Text.Contains("mufg", StringComparison.OrdinalIgnoreCase))
-                        {
-                            regName = "MUFG Intime India Pvt.Ltd.";
-                            regUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html";
-                        }
-                        else if (col0Text.Contains("bigshare", StringComparison.OrdinalIgnoreCase))
-                        {
-                            regName = "Bigshare Services Pvt.Ltd.";
-                            regUrl = "https://www.bigshareonline.com/ipo_allotment.html";
+                            var lowerLink = allotmentLink.ToLowerInvariant();
+                            if (lowerLink.Contains("kfintech") || lowerLink.Contains("kfin"))
+                            {
+                                regName = "Kfin Technologies Ltd.";
+                                regUrl = "https://ipostatus.kfintech.com/";
+                            }
+                            else if (lowerLink.Contains("bigshare"))
+                            {
+                                regName = "Bigshare Services Pvt.Ltd.";
+                                regUrl = "https://www.bigshareonline.com/ipo_allotment.html";
+                            }
+                            else if (lowerLink.Contains("linkintime") || lowerLink.Contains("mufg"))
+                            {
+                                regName = "MUFG Intime India Pvt.Ltd.";
+                                regUrl = "https://in.mpms.mufg.com/Initial_Offer/public-issues.html";
+                            }
+                            else if (lowerLink.Contains("maashitla"))
+                            {
+                                regName = "Maashitla Securities Pvt.Ltd.";
+                                regUrl = "https://maashitla.com/allotment-status/public-issues";
+                            }
+                            else if (lowerLink.Contains("skyline"))
+                            {
+                                regName = "Skyline Financial Services Pvt.Ltd.";
+                                regUrl = "https://www.skylinerta.com/display_ipo_rightissue_allotment.php";
+                            }
+                            else if (lowerLink.Contains("purva"))
+                            {
+                                regName = "Purva Sharegistry (India) Pvt.Ltd.";
+                                regUrl = "https://www.purvashare.com/investor-service/ipo-query";
+                            }
+                            else if (lowerLink.Contains("cameo"))
+                            {
+                                regName = "Cameo Corporate Services Ltd.";
+                                regUrl = "https://ipo.cameoindia.com/";
+                            }
                         }
 
                         var tempRecord = new IpoRecord
@@ -371,17 +428,16 @@ namespace IpoDekho.Backend.Services
                             CloseDate = closeDt,
                             AllotmentDate = allotmentDt,
                             ListingDate = listingDt,
+                            RegistrarName = regName,
+                            RegistrarUrl = regUrl,
                             IsAllotmentOut = isAllotmentAvailable,
                             AllotmentStatus = isAllotmentAvailable ? "AVAILABLE" : "WAITING"
                         };
                         var statusCalculated = IpoStatusCalculator.GetIPOStatus(tempRecord);
                         var allotmentStatusCalculated = IpoStatusCalculator.GetAllotmentStatus(tempRecord);
 
-                        if (cleanName.Contains("Orient", StringComparison.OrdinalIgnoreCase) || cleanName.Contains("Vans", StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogInformation("[AUDIT] PARSED_ISSUE: Found in {SourceId}. Name='{Name}', Open={Open}, Close={Close}, AllotmentDate={Allotment}, Status='{Status}', AllotmentStatus='{AllotmentStatus}'", 
-                                sourceId, cleanName, openDt, closeDt, allotmentDt, statusCalculated, allotmentStatusCalculated);
-                        }
+                        _logger.LogInformation("[AUDIT] PARSED_ISSUE: Found in {SourceId}. Name='{Name}', Open={Open}, Close={Close}, AllotmentDate={Allotment}, Status='{Status}', AllotmentStatus='{AllotmentStatus}'", 
+                            sourceId, cleanName, openDt, closeDt, allotmentDt, statusCalculated, allotmentStatusCalculated);
 
                         results.Add(new IpoRecord
                         {

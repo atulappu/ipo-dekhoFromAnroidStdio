@@ -32,19 +32,25 @@ namespace IpoDekho.Backend.Services
             }
         }
 
+        public static string GetListingStatus(IpoRecord ipo)
+        {
+            if (ipo.Status == "LISTED" || (ipo.ListingPrice.HasValue && ipo.ListingPrice.Value > 0) || (ipo.CurrentMarketPrice.HasValue && ipo.CurrentMarketPrice.Value > 0))
+            {
+                return "LISTED";
+            }
+            return "NOT_LISTED";
+        }
+
+        public static bool GetWatchLiveAvailability(IpoRecord ipo)
+        {
+            return GetListingStatus(ipo) == "LISTED";
+        }
+
         public static string GetIPOStatus(IpoRecord ipo, DateTimeOffset? checkTime = null)
         {
-            var now = checkTime ?? DateTimeOffset.UtcNow;
-            var nowIst = TimeZoneInfo.ConvertTime(now, IstZone);
-
-            if (ipo.ListingDate.HasValue)
+            if (GetListingStatus(ipo) == "LISTED")
             {
-                var listingDateIst = TimeZoneInfo.ConvertTime(ipo.ListingDate.Value, IstZone).Date;
-                var listingBound = new DateTimeOffset(listingDateIst.Year, listingDateIst.Month, listingDateIst.Day, 10, 0, 0, IstZone.BaseUtcOffset);
-                if (nowIst >= listingBound)
-                {
-                    return "LISTED";
-                }
+                return "LISTED";
             }
 
             var baseStatus = CalculateStatus(ipo.OpenDate, ipo.CloseDate, checkTime);
@@ -68,6 +74,8 @@ namespace IpoDekho.Backend.Services
         /// - AVAILABLE: IPO is closed, and validated allotment record or declaration exists
         /// - DATA_ERROR: Invalid dates (e.g. OpenDate > CloseDate)
         /// - SOURCE_UNAVAILABLE: Configured source was unreachable or returned an error
+        ///
+        /// CRITICAL: Never infer AVAILABLE from allotment date alone!
         /// </summary>
         public static string GetAllotmentStatus(IpoRecord ipo, DateTimeOffset? checkTime = null)
         {
@@ -87,26 +95,13 @@ namespace IpoDekho.Backend.Services
                 return "SOURCE_UNAVAILABLE";
             }
 
-            var now = checkTime ?? DateTimeOffset.UtcNow;
-            var nowIst = TimeZoneInfo.ConvertTime(now, IstZone);
-
-            // If explicitly marked allotment out in SQL or external source
+            // If explicitly marked allotment out in SQL from verified source
             if (ipo.IsAllotmentOut || ipo.AllotmentStatus == "AVAILABLE")
             {
                 return "AVAILABLE";
             }
 
-            // If AllotmentDate is present and current time has reached 00:00:00 IST on Allotment Date
-            if (ipo.AllotmentDate.HasValue)
-            {
-                var allotmentDateIst = TimeZoneInfo.ConvertTime(ipo.AllotmentDate.Value, IstZone).Date;
-                var allotmentBound = new DateTimeOffset(allotmentDateIst.Year, allotmentDateIst.Month, allotmentDateIst.Day, 0, 0, 0, IstZone.BaseUtcOffset);
-                if (nowIst >= allotmentBound)
-                {
-                    return "AVAILABLE";
-                }
-            }
-
+            // CRITICAL: Never infer allotment availability from AllotmentDate alone!
             return "WAITING";
         }
 

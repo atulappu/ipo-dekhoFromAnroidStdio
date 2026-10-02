@@ -226,14 +226,11 @@ data class IpoItem(
 ) {
     val lifecycleState: IpoLifecycleState
         get() {
-            if (listingStatus == ListingStatus.LISTED || status == IpoStatus.LISTED) {
+            if (com.example.ipotracker.utils.DateUtils.isWatchLiveAvailable(this)) {
                 return IpoLifecycleState.LISTED
             }
-            if (status == IpoStatus.ALLOTMENT_AVAILABLE || allotmentStatus == AllotmentStatus.AVAILABLE || allotmentInfo?.isAvailable == true) {
+            if (com.example.ipotracker.utils.DateUtils.getAllotmentStatus(this) == "AVAILABLE") {
                 return IpoLifecycleState.ALLOTMENT_AVAILABLE
-            }
-            if (status == IpoStatus.CLOSED || status == IpoStatus.ALLOTMENT_PENDING) {
-                return IpoLifecycleState.CLOSED_ALLOTMENT_PENDING
             }
             if (status == IpoStatus.OPEN) {
                 return IpoLifecycleState.OPEN
@@ -246,6 +243,10 @@ data class IpoItem(
         if (!directUrl.isNullOrBlank()) {
             return directUrl
         }
-        return com.example.ipotracker.data.remote.MockIpoDataSource.getRegistrarUrl(registrar)
+        val fromMock = com.example.ipotracker.data.remote.MockIpoDataSource.getRegistrarUrl(registrar)
+        if (fromMock.isNotBlank()) {
+            return fromMock
+        }
+        return "https://ipostatus.kfintech.com/"
     }
 }

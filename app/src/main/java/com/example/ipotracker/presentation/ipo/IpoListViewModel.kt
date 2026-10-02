@@ -32,7 +32,11 @@ data class IpoListUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val lastSyncTime: String? = null,
-    val syncErrorMessage: String? = null
+    val syncErrorMessage: String? = null,
+    val lastSelectedIpoId: String? = null,
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
+    val page: Int = 1
 )
 
 class IpoListViewModel(
@@ -161,6 +165,26 @@ class IpoListViewModel(
 
     fun clearSyncError() {
         _uiState.update { it.copy(syncErrorMessage = null) }
+    }
+
+    fun saveNavigationState(
+        ipoId: String,
+        scrollIndex: Int,
+        scrollOffset: Int,
+        page: Int = 1
+    ) {
+        _uiState.update {
+            it.copy(
+                lastSelectedIpoId = ipoId,
+                scrollIndex = scrollIndex,
+                scrollOffset = scrollOffset,
+                page = page
+            )
+        }
+    }
+
+    fun clearLastSelectedIpo() {
+        _uiState.update { it.copy(lastSelectedIpoId = null) }
     }
 
     private fun applyFilters(

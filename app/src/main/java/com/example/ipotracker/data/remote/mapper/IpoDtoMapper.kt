@@ -7,18 +7,49 @@ object IpoDtoMapper {
 
     fun mapIpoDtoToDomain(dto: IpoDto): IpoItem {
         val category = parseCategory(dto.category)
-        val status = parseStatus(dto.status)
         val maxPrice = dto.priceBandMax ?: dto.priceBandMin ?: 100.0
         val minPrice = dto.priceBandMin ?: maxPrice
         val lot = dto.lotSize ?: 1
         val minInvest = dto.minInvestment ?: (maxPrice * lot)
 
+        val isAllotAvailable = dto.allotmentAvailable == true ||
+                dto.isAllotmentOut == true ||
+                dto.allotmentStatus.equals("AVAILABLE", ignoreCase = true)
+
+        val parsedStatus = parseStatus(dto.status)
+        val isListed = dto.listingStatus.equals("LISTED", ignoreCase = true) || 
+                       dto.watchLiveAvailable == true || 
+                       parsedStatus == IpoStatus.LISTED
+
+        val effectiveStatus = if (isListed) {
+            IpoStatus.LISTED
+        } else if (isAllotAvailable && (parsedStatus == IpoStatus.CLOSED || parsedStatus == IpoStatus.ALLOTMENT_AVAILABLE)) {
+            IpoStatus.ALLOTMENT_AVAILABLE
+        } else {
+            parsedStatus
+        }
+
+        val regName = dto.registrarName ?: dto.registrar ?: "Registrar"
+        val regUrl = dto.allotmentUrl ?: dto.registrarUrl ?: ""
+
+        val mappedAllotmentInfo = dto.allotmentInfo?.let { mapAllotmentInfoToDomain(it) } ?: if (isAllotAvailable || regUrl.isNotBlank()) {
+            AllotmentInfo(
+                registrarName = regName,
+                registrarUrl = regUrl.ifBlank { "https://ipostatus.kfintech.com/" },
+                allotmentDate = dto.allotmentDate ?: "",
+                isAvailable = isAllotAvailable,
+                note = if (isAllotAvailable) "Allotment status declared." else "Allotment pending."
+            )
+        } else null
+
+        val mappedAllotmentStatus = if (isAllotAvailable) AllotmentStatus.AVAILABLE else AllotmentStatus.PENDING
+
         return IpoItem(
-            id = dto.id ?: dto.symbol?.lowercase() ?: "ipo_${System.currentTimeMillis()}",
-            name = dto.name ?: "Unknown IPO",
+            id = dto.id ?: dto.ipoId ?: dto.symbol?.lowercase() ?: "ipo_${System.currentTimeMillis()}",
+            name = dto.name ?: dto.companyName ?: "Unknown IPO",
             symbol = dto.symbol ?: (dto.name?.take(6)?.uppercase() ?: "IPO"),
             category = category,
-            status = status,
+            status = effectiveStatus,
             priceBandMin = minPrice,
             priceBandMax = maxPrice,
             lotSize = lot,
@@ -47,7 +78,7 @@ object IpoDtoMapper {
             listingExchanges = dto.listingExchanges ?: "BSE, NSE",
             faceValue = dto.faceValue ?: 10.0,
             leadManagers = dto.leadManagers ?: "Lead Managers",
-            registrar = dto.registrar ?: "Registrar",
+            registrar = regName,
             promoterHoldingPre = dto.promoterHoldingPre ?: 0.0,
             promoterHoldingPost = dto.promoterHoldingPost ?: 0.0,
             objectsOfIssue = dto.objectsOfIssue ?: emptyList(),
@@ -55,7 +86,9 @@ object IpoDtoMapper {
             gmpHistory = dto.gmpHistory?.map { mapGmpHistoryItemToDomain(it) } ?: emptyList(),
             financials = dto.financials?.map { mapFinancialYearDataToDomain(it) } ?: emptyList(),
             importantDates = dto.importantDates?.map { mapImportantDateItemToDomain(it) } ?: emptyList(),
-            allotmentInfo = dto.allotmentInfo?.let { mapAllotmentInfoToDomain(it) },
+            listingStatus = if (isListed) ListingStatus.LISTED else ListingStatus.NOT_LISTED,
+            allotmentStatus = mappedAllotmentStatus,
+            allotmentInfo = mappedAllotmentInfo,
             analysisReport = dto.analysisReport?.let { mapAnalysisReportToDomain(it) },
             isWatchlisted = false,
             isDemoData = false

@@ -205,16 +205,53 @@ class IpoRepositoryImpl(
             }
 
             baseList.map { item ->
+                val isExplicitlyAvailable = item.allotmentStatus == com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE ||
+                        item.status == IpoStatus.ALLOTMENT_AVAILABLE ||
+                        item.allotmentInfo?.isAvailable == true
+
+                val isExplicitlyListed = item.listingStatus == com.example.ipotracker.data.model.ListingStatus.LISTED ||
+                        item.status == IpoStatus.LISTED
+
                 val dynamicStatus = com.example.ipotracker.utils.DateUtils.calculateEffectiveStatus(
                     openDateStr = item.openDate,
                     closeDateStr = item.closeDate,
                     allotmentDateStr = item.allotmentDate,
                     listingDateStr = item.listingDate,
                     fallbackStatus = item.status,
+                    isAllotmentAvailable = isExplicitlyAvailable,
+                    isListed = isExplicitlyListed,
                     checkInstantMillis = nowMillis
                 )
+                val allotStatus = com.example.ipotracker.utils.DateUtils.getAllotmentStatus(
+                    openDateStr = item.openDate,
+                    closeDateStr = item.closeDate,
+                    allotmentDateStr = item.allotmentDate,
+                    isExplicitlyAvailable = isExplicitlyAvailable,
+                    sourceFailed = item.sourceId.equals("SOURCE_UNAVAILABLE", ignoreCase = true) || item.sourceUrl.equals("SOURCE_UNAVAILABLE", ignoreCase = true),
+                    checkInstantMillis = nowMillis
+                )
+                val isAllotAvailable = allotStatus == "AVAILABLE"
+
+                val finalStatus = if (isExplicitlyListed) {
+                    IpoStatus.LISTED
+                } else if (isAllotAvailable && (dynamicStatus == IpoStatus.CLOSED || dynamicStatus == IpoStatus.ALLOTMENT_AVAILABLE)) {
+                    IpoStatus.ALLOTMENT_AVAILABLE
+                } else {
+                    dynamicStatus
+                }
+
                 item.copy(
-                    status = dynamicStatus,
+                    status = finalStatus,
+                    allotmentStatus = if (isAllotAvailable) com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE else com.example.ipotracker.data.model.AllotmentStatus.PENDING,
+                    allotmentInfo = item.allotmentInfo?.copy(isAvailable = isAllotAvailable) ?: if (isAllotAvailable) {
+                        com.example.ipotracker.data.model.AllotmentInfo(
+                            registrarName = item.registrar.ifBlank { "Kfin Technologies Ltd." },
+                            registrarUrl = item.getEffectiveRegistrarUrl(),
+                            allotmentDate = item.allotmentDate,
+                            isAvailable = true,
+                            note = "Allotment status declared."
+                        )
+                    } else null,
                     isWatchlisted = watchlistedIds.contains(item.id),
                     isDemoData = false
                 )

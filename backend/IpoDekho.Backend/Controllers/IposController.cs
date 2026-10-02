@@ -67,7 +67,8 @@ namespace IpoDekho.Backend.Controllers
                 ListingDate = i.ListingDate,
                 RegistrarName = i.RegistrarName,
                 RegistrarUrl = i.RegistrarUrl,
-                IsAllotmentOut = i.IsAllotmentOut || i.AllotmentStatus == "AVAILABLE",
+                ListingStatus = IpoStatusCalculator.GetListingStatus(i),
+                IsAllotmentOut = (IpoStatusCalculator.GetAllotmentStatus(i) == "AVAILABLE"),
                 AllotmentStatus = IpoStatusCalculator.GetAllotmentStatus(i),
                 UpdatedAt = i.UpdatedAt
             }).ToList();
@@ -129,7 +130,8 @@ namespace IpoDekho.Backend.Controllers
                 ListingDate = ipo.ListingDate,
                 RegistrarName = ipo.RegistrarName,
                 RegistrarUrl = ipo.RegistrarUrl,
-                IsAllotmentOut = ipo.IsAllotmentOut || ipo.AllotmentStatus == "AVAILABLE",
+                ListingStatus = IpoStatusCalculator.GetListingStatus(ipo),
+                IsAllotmentOut = (IpoStatusCalculator.GetAllotmentStatus(ipo) == "AVAILABLE"),
                 AllotmentStatus = IpoStatusCalculator.GetAllotmentStatus(ipo),
                 UpdatedAt = ipo.UpdatedAt,
                 GmpHistory = gmpTicks,

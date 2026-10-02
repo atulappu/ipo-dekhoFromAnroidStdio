@@ -44,6 +44,8 @@ data class IpoEntity(
     val registrarName: String = "",
     val registrarUrl: String = "",
     val officialExchangeUrl: String = "",
+    val allotmentStatus: String = "WAITING",
+    val isAllotmentOut: Boolean = false,
     val lastSyncedAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain(): IpoItem {
@@ -92,57 +94,75 @@ data class IpoEntity(
             sector = sector,
             listingExchanges = exchange,
             isDemoData = false,
+            listingStatus = if (stat == IpoStatus.LISTED) com.example.ipotracker.data.model.ListingStatus.LISTED else com.example.ipotracker.data.model.ListingStatus.NOT_LISTED,
+            allotmentStatus = if (isAllotmentOut || allotmentStatus.equals("AVAILABLE", ignoreCase = true)) com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE else com.example.ipotracker.data.model.AllotmentStatus.PENDING,
             allotmentInfo = if (registrarName.isNotEmpty() || registrarUrl.isNotEmpty()) {
                 AllotmentInfo(
                     registrarName = registrarName,
                     registrarUrl = registrarUrl,
-                    allotmentDate = allotmentDate
+                    allotmentDate = allotmentDate,
+                    isAvailable = isAllotmentOut || allotmentStatus.equals("AVAILABLE", ignoreCase = true)
+                )
+            } else if (isAllotmentOut || allotmentStatus.equals("AVAILABLE", ignoreCase = true)) {
+                AllotmentInfo(
+                    registrarName = "Registrar",
+                    registrarUrl = "https://ipostatus.kfintech.com/",
+                    allotmentDate = allotmentDate,
+                    isAvailable = true
                 )
             } else null
         )
     }
 
     companion object {
-        fun fromDomain(domain: IpoItem): IpoEntity = IpoEntity(
-            id = domain.id,
-            name = domain.name,
-            symbol = domain.symbol,
-            exchange = domain.listingExchanges,
-            category = domain.category.name,
-            status = domain.status.name,
-            priceBandMin = domain.priceBandMin,
-            priceBandMax = domain.priceBandMax,
-            lotSize = domain.lotSize,
-            minInvestment = domain.minInvestment,
-            issueSizeCr = domain.issueSizeCr,
-            freshIssueCr = domain.freshIssueCr,
-            ofsCr = domain.ofsCr,
-            openDate = domain.openDate,
-            closeDate = domain.closeDate,
-            allotmentDate = domain.allotmentDate,
-            listingDate = domain.listingDate,
-            currentGmp = domain.currentGmp,
-            estimatedListingPrice = domain.estimatedListingPrice,
-            estimatedGainPercent = domain.estimatedGainPercent,
-            lastGmpUpdated = domain.lastGmpUpdated,
-            currentSubscriptionTimes = domain.currentSubscriptionTimes,
-            qibTimes = domain.qibTimes,
-            niiTimes = domain.niiTimes,
-            retailTimes = domain.retailTimes,
-            listingPrice = domain.listingPrice,
-            listingGainPercent = domain.listingGainPercent,
-            currentMarketPrice = domain.currentMarketPrice,
-            currentReturnPercent = domain.currentReturnPercent,
-            description = domain.description,
-            sector = domain.sector,
-            registrarName = domain.allotmentInfo?.registrarName ?: "",
-            registrarUrl = domain.allotmentInfo?.registrarUrl ?: "",
-            officialExchangeUrl = if (domain.listingExchanges.contains("BSE")) {
-                "https://www.bseindia.com/markets/publicissues/ipoissues.aspx?id=1&type=pso"
-            } else {
-                "https://www.nseindia.com/market-data/all-upcoming-issues-ipo"
-            },
-            lastSyncedAt = System.currentTimeMillis()
-        )
+        fun fromDomain(domain: IpoItem): IpoEntity {
+            val isAllotAvailable = domain.allotmentStatus == com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE ||
+                    domain.status == IpoStatus.ALLOTMENT_AVAILABLE ||
+                    domain.allotmentInfo?.isAvailable == true
+
+            return IpoEntity(
+                id = domain.id,
+                name = domain.name,
+                symbol = domain.symbol,
+                exchange = domain.listingExchanges,
+                category = domain.category.name,
+                status = domain.status.name,
+                priceBandMin = domain.priceBandMin,
+                priceBandMax = domain.priceBandMax,
+                lotSize = domain.lotSize,
+                minInvestment = domain.minInvestment,
+                issueSizeCr = domain.issueSizeCr,
+                freshIssueCr = domain.freshIssueCr,
+                ofsCr = domain.ofsCr,
+                openDate = domain.openDate,
+                closeDate = domain.closeDate,
+                allotmentDate = domain.allotmentDate,
+                listingDate = domain.listingDate,
+                currentGmp = domain.currentGmp,
+                estimatedListingPrice = domain.estimatedListingPrice,
+                estimatedGainPercent = domain.estimatedGainPercent,
+                lastGmpUpdated = domain.lastGmpUpdated,
+                currentSubscriptionTimes = domain.currentSubscriptionTimes,
+                qibTimes = domain.qibTimes,
+                niiTimes = domain.niiTimes,
+                retailTimes = domain.retailTimes,
+                listingPrice = domain.listingPrice,
+                listingGainPercent = domain.listingGainPercent,
+                currentMarketPrice = domain.currentMarketPrice,
+                currentReturnPercent = domain.currentReturnPercent,
+                description = domain.description,
+                sector = domain.sector,
+                registrarName = domain.allotmentInfo?.registrarName?.ifBlank { domain.registrar } ?: domain.registrar,
+                registrarUrl = domain.allotmentInfo?.registrarUrl?.ifBlank { domain.getEffectiveRegistrarUrl() } ?: domain.getEffectiveRegistrarUrl(),
+                officialExchangeUrl = if (domain.listingExchanges.contains("BSE")) {
+                    "https://www.bseindia.com/markets/publicissues/ipoissues.aspx?id=1&type=pso"
+                } else {
+                    "https://www.nseindia.com/market-data/all-upcoming-issues-ipo"
+                },
+                allotmentStatus = if (isAllotAvailable) "AVAILABLE" else "WAITING",
+                isAllotmentOut = isAllotAvailable,
+                lastSyncedAt = System.currentTimeMillis()
+            )
+        }
     }
 }

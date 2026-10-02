@@ -86,7 +86,9 @@ object MockIpoDataSource {
             name = "SRIT India Ltd",
             symbol = "SRIT",
             category = IpoCategory.MAINBOARD,
-            status = IpoStatus.OPEN,
+            status = IpoStatus.CLOSED,
+            allotmentStatus = AllotmentStatus.PENDING,
+            listingStatus = ListingStatus.NOT_LISTED,
             priceBandMin = 123.0,
             priceBandMax = 130.0,
             lotSize = 110,
@@ -1055,6 +1057,61 @@ object MockIpoDataSource {
                 isAvailable = true,
                 note = "Allotment status declared. Check directly on MUFG Intime portal."
             )
+        ),
+
+        // =========================================================================
+        // 18B. ALLOTMENT OUT MAINBOARD IPO: Orient Cables (India) Ltd. (NSE & BSE)
+        // Data verified against InvestorGain Live Feed & Official Kfintech Allotment Portal
+        // =========================================================================
+        IpoItem(
+            id = "ipo-orient-cables",
+            name = "Orient Cables (India) Ltd.",
+            symbol = "ORIENT",
+            category = IpoCategory.MAINBOARD,
+            status = IpoStatus.ALLOTMENT_AVAILABLE,
+            allotmentStatus = AllotmentStatus.AVAILABLE,
+            priceBandMin = 272.0,
+            priceBandMax = 272.0,
+            lotSize = 55,
+            minInvestment = 14960.0,
+            issueSizeCr = 552.00,
+            freshIssueCr = 400.00,
+            ofsCr = 152.00,
+            openDate = "25-Sep-2026",
+            closeDate = "29-Sep-2026",
+            allotmentDate = "30-Sep-2026",
+            listingDate = "05-Oct-2026",
+            currentGmp = 105.0,
+            estimatedListingPrice = 377.0,
+            estimatedGainPercent = 38.60,
+            lastGmpUpdated = "01-Oct-2026 11:37 IST",
+            currentSubscriptionTimes = 97.28,
+            qibTimes = 124.50,
+            niiTimes = 142.10,
+            retailTimes = 72.85,
+            description = "Orient Cables (India) Ltd. is a leading manufacturer of high-performance instrumentation cables, control cables, optical fibre cables, and specialized power transmission systems.",
+            sector = "Industrial Manufacturing - Electrical Cables",
+            listingExchanges = "BSE, NSE",
+            faceValue = 10.0,
+            leadManagers = "Equirus Capital Pvt Ltd",
+            registrar = "Kfin Technologies Ltd.",
+            importantDates = listOf(
+                ImportantDateItem("IPO Opens", "25-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("IPO Closes", "29-Sep-2026", DateStatus.COMPLETED),
+                ImportantDateItem("Basis of Allotment", "30-Sep-2026", DateStatus.COMPLETED, "Allotment Declared"),
+                ImportantDateItem("Listing Date", "05-Oct-2026", DateStatus.UPCOMING)
+            ),
+            allotmentInfo = AllotmentInfo(
+                registrarName = "Kfin Technologies Ltd.",
+                registrarUrl = "https://ipostatus.kfintech.com/",
+                allotmentDate = "30-Sep-2026",
+                isAvailable = true,
+                note = "Allotment declared on Kfin Technologies portal."
+            ),
+            sourceId = "SRC_INVESTORGAIN_GMP",
+            sourceUrl = "https://www.investorgain.com/report/live-ipo-gmp/331/",
+            isSourceVerified = true,
+            isDemoData = false
         ),
 
         // =========================================================================

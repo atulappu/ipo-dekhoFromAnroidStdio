@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -62,13 +63,19 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Tab state: 0 = OPEN, 1 = UPCOMING, 2 = CLOSED
-    var selectedTopTab by remember { mutableStateOf(0) }
-    var filterMainboard by remember { mutableStateOf(true) }
-    var filterSme by remember { mutableStateOf(true) }
-    var selectedSortOption by remember { mutableStateOf(IpoSortOption.DEFAULT) }
+    val navContext by viewModel.navContext.collectAsStateWithLifecycle()
+
+    // Tab state & filter options strictly persisted in ViewModel (Issue 2)
+    val selectedTopTab = navContext.selectedTab
+    val filterMainboard = navContext.filterMainboard
+    val filterSme = navContext.filterSme
+    val selectedSortOption = navContext.sortOption
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = navContext.scrollIndex,
+        initialFirstVisibleItemScrollOffset = navContext.scrollOffset
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -173,7 +180,7 @@ fun HomeScreen(
                         count = uiState.openIpos.size,
                         color = MarketGreen,
                         isSelected = selectedTopTab == 0,
-                        onClick = { selectedTopTab = 0 },
+                        onClick = { viewModel.updateSelectedTab(0) },
                         modifier = Modifier.weight(1f)
                     )
                     TopCategoryTab(
@@ -181,7 +188,7 @@ fun HomeScreen(
                         count = uiState.upcomingIpos.size,
                         color = PrimaryOrange,
                         isSelected = selectedTopTab == 1,
-                        onClick = { selectedTopTab = 1 },
+                        onClick = { viewModel.updateSelectedTab(1) },
                         modifier = Modifier.weight(1f)
                     )
                     TopCategoryTab(
@@ -189,7 +196,7 @@ fun HomeScreen(
                         count = uiState.closedIpos.size,
                         color = NeutralGray,
                         isSelected = selectedTopTab == 2,
-                        onClick = { selectedTopTab = 2 },
+                        onClick = { viewModel.updateSelectedTab(2) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -208,8 +215,7 @@ fun HomeScreen(
                         isMainboardSelected = filterMainboard,
                         isSmeSelected = filterSme,
                         onMarketTypeChanged = { mainboard, sme ->
-                            filterMainboard = mainboard
-                            filterSme = sme
+                            viewModel.updateFilters(mainboard, sme)
                         },
                         onValidationWarning = { message ->
                             coroutineScope.launch {
@@ -225,7 +231,7 @@ fun HomeScreen(
                     // Professional "Sort By ▼" Menu Control
                     IpoSortDropdown(
                         selectedOption = selectedSortOption,
-                        onSortOptionSelected = { selectedSortOption = it }
+                        onSortOptionSelected = { viewModel.updateSortOption(it) }
                     )
                 }
             }
@@ -244,6 +250,19 @@ fun HomeScreen(
             }
             .applyIpoSorting(selectedSortOption)
 
+        // Restore exact scroll position around selected IPO upon returning from Detail (Issue 2)
+        LaunchedEffect(navContext.lastSelectedIpoId, filteredList) {
+            val targetId = navContext.lastSelectedIpoId
+            if (targetId != null && filteredList.isNotEmpty()) {
+                val itemIndex = filteredList.indexOfFirst { it.id == targetId }
+                if (itemIndex >= 0) {
+                    val targetScrollIndex = (itemIndex + 3).coerceAtMost(filteredList.size + 2)
+                    listState.scrollToItem(targetScrollIndex)
+                }
+                viewModel.clearLastSelectedIpo()
+            }
+        }
+
         PullToRefreshBox(
             isRefreshing = uiState.isLoading,
             onRefresh = { viewModel.refresh() },
@@ -252,6 +271,7 @@ fun HomeScreen(
                 .padding(innerPadding)
         ) {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -261,77 +281,82 @@ fun HomeScreen(
                     MarketSummaryBar(indices = uiState.marketIndices)
                 }
 
-
-            // Quick Tools Section
-            item {
-                QuickToolsSection(
-                    onCalculatorClick = { onNavigateToCalculator(null) },
-                    onAllotmentClick = { onNavigateToAllotment(null) },
-                    onComparisonClick = onNavigateToComparison,
-                    onCalendarClick = onNavigateToCalendar
-                )
-            }
-
-            // Section Header
-            item {
-                SectionHeader(
-                    title = when (selectedTopTab) {
-                        0 -> "Live & Open IPOs (${filteredList.size})"
-                        1 -> "Upcoming IPO Pipeline (${filteredList.size})"
-                        else -> "Recently Closed IPOs (${filteredList.size})"
-                    },
-                    actionLabel = "View All",
-                    onActionClick = {
-                        val status = when (selectedTopTab) {
-                            0 -> "OPEN"
-                            1 -> "UPCOMING"
-                            else -> "CLOSED"
-                        }
-                        onNavigateToIpoList(status)
-                    }
-                )
-            }
-
-            // IPO Cards
-            if (filteredList.isEmpty()) {
+                // Quick Tools Section
                 item {
-                    val emptyTitle = when (selectedTopTab) {
-                        0 -> "No Active IPOs Open for Bidding"
-                        1 -> "No Upcoming IPOs Found"
-                        else -> "No Closed IPOs Found"
-                    }
-                    val emptyMessage = when (selectedTopTab) {
-                        0 -> "There are no IPOs actively accepting bids on NSE or BSE today. Browse the Upcoming tab to view scheduled issues."
-                        1 -> "No upcoming IPO schedules reported. Stay tuned for new DRHP/RHP filings."
-                        else -> "No closed issues match your active filter."
-                    }
-                    val actionLabel = if (selectedTopTab == 0) "View Upcoming IPOs" else "Reset Filters"
-                    EmptyState(
-                        title = emptyTitle,
-                        message = emptyMessage,
-                        actionLabel = actionLabel,
+                    QuickToolsSection(
+                        onCalculatorClick = { onNavigateToCalculator(null) },
+                        onAllotmentClick = { onNavigateToAllotment(null) },
+                        onComparisonClick = onNavigateToComparison,
+                        onCalendarClick = onNavigateToCalendar
+                    )
+                }
+
+                // Section Header
+                item {
+                    SectionHeader(
+                        title = when (selectedTopTab) {
+                            0 -> "Live & Open IPOs (${filteredList.size})"
+                            1 -> "Upcoming IPO Pipeline (${filteredList.size})"
+                            else -> "Recently Closed IPOs (${filteredList.size})"
+                        },
+                        actionLabel = "View All",
                         onActionClick = {
-                            if (selectedTopTab == 0) {
-                                selectedTopTab = 1
-                            } else {
-                                filterMainboard = true
-                                filterSme = true
+                            val status = when (selectedTopTab) {
+                                0 -> "OPEN"
+                                1 -> "UPCOMING"
+                                else -> "CLOSED"
                             }
+                            onNavigateToIpoList(status)
                         }
                     )
                 }
-            } else {
-                items(filteredList, key = { it.id }) { ipo ->
-                    IpoCard(
-                        ipo = ipo,
-                        onIpoClick = onNavigateToDetail,
-                        onWatchlistToggle = { viewModel.toggleWatchlist(it) },
-                        onApplyClick = onNavigateToApplicationInfo,
-                        onAllotmentClick = { onNavigateToAllotment(it) },
-                        onWatchLiveClick = { onNavigateToLiveMarket(it) }
-                    )
+
+                // IPO Cards
+                if (filteredList.isEmpty()) {
+                    item {
+                        val emptyTitle = when (selectedTopTab) {
+                            0 -> "No Active IPOs Open for Bidding"
+                            1 -> "No Upcoming IPOs Found"
+                            else -> "No Closed IPOs Found"
+                        }
+                        val emptyMessage = when (selectedTopTab) {
+                            0 -> "There are no IPOs actively accepting bids on NSE or BSE today. Browse the Upcoming tab to view scheduled issues."
+                            1 -> "No upcoming IPO schedules reported. Stay tuned for new DRHP/RHP filings."
+                            else -> "No closed issues match your active filter."
+                        }
+                        val actionLabel = if (selectedTopTab == 0) "View Upcoming IPOs" else "Reset Filters"
+                        EmptyState(
+                            title = emptyTitle,
+                            message = emptyMessage,
+                            actionLabel = actionLabel,
+                            onActionClick = {
+                                if (selectedTopTab == 0) {
+                                    viewModel.updateSelectedTab(1)
+                                } else {
+                                    viewModel.updateFilters(true, true)
+                                }
+                            }
+                        )
+                    }
+                } else {
+                    items(filteredList, key = { it.id }) { ipo ->
+                        IpoCard(
+                            ipo = ipo,
+                            onIpoClick = { ipoId ->
+                                viewModel.saveNavigationState(
+                                    ipoId = ipoId,
+                                    scrollIndex = listState.firstVisibleItemIndex,
+                                    scrollOffset = listState.firstVisibleItemScrollOffset
+                                )
+                                onNavigateToDetail(ipoId)
+                            },
+                            onWatchlistToggle = { viewModel.toggleWatchlist(it) },
+                            onApplyClick = onNavigateToApplicationInfo,
+                            onAllotmentClick = { onNavigateToAllotment(it) },
+                            onWatchLiveClick = { onNavigateToLiveMarket(it) }
+                        )
+                    }
                 }
-            }
 
             item {
                 Spacer(modifier = Modifier.height(12.dp))

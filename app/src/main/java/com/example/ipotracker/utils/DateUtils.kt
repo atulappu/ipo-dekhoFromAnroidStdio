@@ -201,7 +201,18 @@ object DateUtils {
         ipo: IpoItem,
         checkInstantMillis: Long = System.currentTimeMillis()
     ): String {
-        return getIPOStatus(ipo.openDate, ipo.closeDate, checkInstantMillis)
+        if (isWatchLiveAvailable(ipo)) return "LISTED"
+        val allot = getAllotmentStatus(ipo, checkInstantMillis)
+        if (allot == "AVAILABLE") return "ALLOTMENT_AVAILABLE"
+        val base = calculateIpoStatus(ipo.openDate, ipo.closeDate, checkInstantMillis)
+        return when (base) {
+            IpoStatus.OPEN -> "OPEN"
+            IpoStatus.UPCOMING -> "UPCOMING"
+            IpoStatus.CLOSED -> "CLOSED"
+            IpoStatus.NOT_AVAILABLE -> "NOT_AVAILABLE"
+            IpoStatus.DATA_ERROR -> "DATA_ERROR"
+            else -> ipo.status.name
+        }
     }
 
     /**
@@ -278,34 +289,30 @@ object DateUtils {
      * while strictly maintaining the 17:30:00 IST open/closed threshold.
      * Prevents historical or closed IPOs from ever appearing as UPCOMING.
      */
+    /**
+     * Calculates the effective domain status of an IPO dynamically.
+     * Business rules:
+     * - A validated LISTED status from configured source is strictly LISTED.
+     * - A Close Date in the past cannot be UPCOMING or OPEN.
+     * - For closed IPOs, ONLY validated allotment results can transition to ALLOTMENT_AVAILABLE.
+     *   Never infer allotment availability from allotment date alone.
+     */
     fun calculateEffectiveStatus(
         openDateStr: String?,
         closeDateStr: String?,
         allotmentDateStr: String? = null,
         listingDateStr: String? = null,
         fallbackStatus: IpoStatus = IpoStatus.UPCOMING,
+        isAllotmentAvailable: Boolean = false,
+        isListed: Boolean = false,
         checkInstantMillis: Long = System.currentTimeMillis()
     ): IpoStatus {
-        // Rule 1: An already listed or historically completed IPO can NEVER be UPCOMING or OPEN
-        if (fallbackStatus == IpoStatus.LISTED) {
+        // Rule 1: An already verified listed IPO from data source is LISTED
+        if (isListed || fallbackStatus == IpoStatus.LISTED) {
             return IpoStatus.LISTED
         }
 
-        // Rule 2: If Listing Date is in the past, status is strictly LISTED
-        if (!listingDateStr.isNullOrBlank()) {
-            val listingCal = parseToIstCalendar(listingDateStr)
-            if (listingCal != null) {
-                listingCal.set(Calendar.HOUR_OF_DAY, 10) // 10:00 AM IST market listing
-                listingCal.set(Calendar.MINUTE, 0)
-                listingCal.set(Calendar.SECOND, 0)
-                listingCal.set(Calendar.MILLISECOND, 0)
-                if (checkInstantMillis >= listingCal.timeInMillis) {
-                    return IpoStatus.LISTED
-                }
-            }
-        }
-
-        // Rule 3: If Close Date is in the past, it CANNOT be UPCOMING or OPEN
+        // Rule 2: If Close Date is in the past, it CANNOT be UPCOMING or OPEN
         if (!closeDateStr.isNullOrBlank()) {
             val closeCal = parseToIstCalendar(closeDateStr)
             if (closeCal != null) {
@@ -314,17 +321,8 @@ object DateUtils {
                 closeCal.set(Calendar.SECOND, 0)
                 closeCal.set(Calendar.MILLISECOND, 0)
                 if (checkInstantMillis >= closeCal.timeInMillis) {
-                    if (!allotmentDateStr.isNullOrBlank()) {
-                        val allotmentCal = parseToIstCalendar(allotmentDateStr)
-                        if (allotmentCal != null) {
-                            allotmentCal.set(Calendar.HOUR_OF_DAY, 0)
-                            allotmentCal.set(Calendar.MINUTE, 0)
-                            allotmentCal.set(Calendar.SECOND, 0)
-                            allotmentCal.set(Calendar.MILLISECOND, 0)
-                            if (checkInstantMillis >= allotmentCal.timeInMillis) {
-                                return IpoStatus.ALLOTMENT_AVAILABLE
-                            }
-                        }
+                    if (isAllotmentAvailable || fallbackStatus == IpoStatus.ALLOTMENT_AVAILABLE) {
+                        return IpoStatus.ALLOTMENT_AVAILABLE
                     }
                     return IpoStatus.CLOSED
                 }
@@ -338,5 +336,98 @@ object DateUtils {
         }
 
         return baseStatus
+    }
+
+    /**
+     * Centralized Allotment Availability Rule:
+     * Possible values:
+     * - NOT_AVAILABLE: IPO is not yet closed (UPCOMING or OPEN)
+     * - WAITING: IPO is closed, but allotment is not yet available/declared
+     * - AVAILABLE: IPO is closed, and validated allotment record exists from configured source
+     * - DATA_ERROR: Invalid dates (e.g. OpenDate > CloseDate)
+     * - SOURCE_UNAVAILABLE: Configured source was unreachable or returned an error
+     *
+     * CRITICAL: Never infer AVAILABLE from allotment date alone!
+     */
+    fun getAllotmentStatus(
+        openDateStr: String?,
+        closeDateStr: String?,
+        allotmentDateStr: String? = null,
+        isExplicitlyAvailable: Boolean = false,
+        sourceFailed: Boolean = false,
+        checkInstantMillis: Long = System.currentTimeMillis()
+    ): String {
+        if (sourceFailed) return "SOURCE_UNAVAILABLE"
+
+        val openCal = parseToIstCalendar(openDateStr)
+        val closeCal = parseToIstCalendar(closeDateStr)
+
+        if (openCal != null && closeCal != null && openCal.timeInMillis > closeCal.timeInMillis) {
+            return "DATA_ERROR"
+        }
+
+        val baseStatus = calculateIpoStatus(openDateStr, closeDateStr, checkInstantMillis)
+        if (baseStatus == IpoStatus.UPCOMING || baseStatus == IpoStatus.OPEN || baseStatus == IpoStatus.NOT_AVAILABLE) {
+            return "NOT_AVAILABLE"
+        }
+        if (baseStatus == IpoStatus.DATA_ERROR) {
+            return "DATA_ERROR"
+        }
+
+        // Only return AVAILABLE if actual validated allotment result exists!
+        if (isExplicitlyAvailable) {
+            return "AVAILABLE"
+        }
+
+        return "WAITING"
+    }
+
+    fun getAllotmentStatus(
+        ipo: IpoItem,
+        checkInstantMillis: Long = System.currentTimeMillis()
+    ): String {
+        val isExplicitlyAvailable = ipo.allotmentStatus == com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE ||
+                ipo.status == IpoStatus.ALLOTMENT_AVAILABLE ||
+                ipo.allotmentInfo?.isAvailable == true
+
+        val sourceFailed = ipo.sourceId.equals("SOURCE_UNAVAILABLE", ignoreCase = true) || 
+                ipo.sourceUrl.equals("SOURCE_UNAVAILABLE", ignoreCase = true)
+
+        return getAllotmentStatus(
+            openDateStr = ipo.openDate,
+            closeDateStr = ipo.closeDate,
+            allotmentDateStr = ipo.allotmentDate.ifBlank { ipo.allotmentInfo?.allotmentDate },
+            isExplicitlyAvailable = isExplicitlyAvailable,
+            sourceFailed = sourceFailed,
+            checkInstantMillis = checkInstantMillis
+        )
+    }
+
+    fun isAllotmentAvailable(
+        ipo: IpoItem,
+        checkInstantMillis: Long = System.currentTimeMillis()
+    ): Boolean {
+        return getAllotmentStatus(ipo, checkInstantMillis) == "AVAILABLE"
+    }
+
+    fun getListingStatus(
+        listingStatus: com.example.ipotracker.data.model.ListingStatus,
+        status: IpoStatus = IpoStatus.UPCOMING
+    ): String {
+        if (listingStatus == com.example.ipotracker.data.model.ListingStatus.LISTED || status == IpoStatus.LISTED) {
+            return "LISTED"
+        }
+        return "NOT_LISTED"
+    }
+
+    fun isWatchLiveAvailable(
+        listingStatus: com.example.ipotracker.data.model.ListingStatus,
+        status: IpoStatus = IpoStatus.UPCOMING
+    ): Boolean {
+        return getListingStatus(listingStatus, status) == "LISTED"
+    }
+
+    fun isWatchLiveAvailable(ipo: IpoItem): Boolean {
+        return isWatchLiveAvailable(ipo.listingStatus, ipo.status)
     }
 }

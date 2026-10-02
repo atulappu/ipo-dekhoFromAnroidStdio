@@ -6,10 +6,20 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class IpoDto(
     @Json(name = "id") val id: String? = null,
+    @Json(name = "ipoId") val ipoId: String? = null,
     @Json(name = "name") val name: String? = null,
+    @Json(name = "companyName") val companyName: String? = null,
     @Json(name = "symbol") val symbol: String? = null,
     @Json(name = "category") val category: String? = null,
     @Json(name = "status") val status: String? = null,
+    @Json(name = "allotmentStatus") val allotmentStatus: String? = null,
+    @Json(name = "allotmentAvailable") val allotmentAvailable: Boolean? = null,
+    @Json(name = "allotmentUrl") val allotmentUrl: String? = null,
+    @Json(name = "isAllotmentOut") val isAllotmentOut: Boolean? = null,
+    @Json(name = "listingStatus") val listingStatus: String? = null,
+    @Json(name = "watchLiveAvailable") val watchLiveAvailable: Boolean? = null,
+    @Json(name = "registrarName") val registrarName: String? = null,
+    @Json(name = "registrarUrl") val registrarUrl: String? = null,
 
     // Both camelCase (ASP.NET Core default) and snake_case support
     @Json(name = "priceBandMin") val priceBandMinCamel: Double? = null,
@@ -142,4 +152,10 @@ data class IpoDto(
     val importantDates: List<ImportantDateItemDto>? get() = importantDatesCamel ?: importantDatesSnake
     val allotmentInfo: AllotmentInfoDto? get() = allotmentInfoCamel ?: allotmentInfoSnake
     val analysisReport: AnalysisReportDto? get() = analysisReportCamel ?: analysisReportSnake
+
+    val effectiveId: String? get() = id ?: ipoId
+    val effectiveName: String? get() = name ?: companyName
+    val effectiveAllotmentStatus: String? get() = allotmentStatus
+    val effectiveAllotmentAvailable: Boolean get() = allotmentAvailable == true || isAllotmentOut == true || allotmentStatus.equals("AVAILABLE", ignoreCase = true)
+    val effectiveAllotmentUrl: String? get() = allotmentUrl ?: registrarUrl
 }

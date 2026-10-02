@@ -15,5 +15,6 @@ data class AppNotification(
     val targetIpoId: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val isRead: Boolean = false,
-    val badgeText: String? = null
+    val badgeText: String? = null,
+    val eventKey: String? = null
 )

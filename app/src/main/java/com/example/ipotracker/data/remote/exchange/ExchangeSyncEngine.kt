@@ -189,14 +189,75 @@ class ExchangeSyncEngine {
                 val sizeStr = cols.getOrNull(5)?.replace(Regex("[^\\d.]"), "")
                 val issueSize = sizeStr?.toDoubleOrNull() ?: 0.0
 
-                // Dates: extract clean date token from column 7 (open) and column 8 (close)
                 val openDateRaw = cols.getOrNull(7) ?: ""
                 val closeDateRaw = cols.getOrNull(8) ?: ""
+                val allotmentDateRaw = cols.getOrNull(9) ?: ""
                 val listingDateRaw = cols.getOrNull(10) ?: ""
 
                 val openDate = extractDateToken(openDateRaw)
                 val closeDate = extractDateToken(closeDateRaw)
+                val allotmentDate = extractDateToken(allotmentDateRaw)
                 val listingDate = extractDateToken(listingDateRaw)
+
+                // Extract registrar link & Allotted badge from column 0
+                val allotHrefMatcher = Pattern.compile("(?i)<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>(.*?)<\\/a>").matcher(rawFirstCol)
+                var registrarUrl = ""
+                var hasAllottedBadge = rawFirstCol.contains(">Allotted<", ignoreCase = true) || 
+                                       rawFirstCol.contains("badge rounded-pill bg-success", ignoreCase = true) ||
+                                       rawFirstCol.contains(">Allotment Out<", ignoreCase = true)
+
+                while (allotHrefMatcher.find()) {
+                    val href = allotHrefMatcher.group(1) ?: ""
+                    val linkText = allotHrefMatcher.group(2) ?: ""
+                    if (linkText.contains("Allotted", ignoreCase = true) || linkText.contains("Allotment Out", ignoreCase = true)) {
+                        registrarUrl = href
+                        hasAllottedBadge = true
+                        break
+                    } else if (href.contains("kfintech", ignoreCase = true) || href.contains("bigshare", ignoreCase = true) ||
+                        href.contains("linkintime", ignoreCase = true) || href.contains("mufg", ignoreCase = true) ||
+                        href.contains("maashitla", ignoreCase = true) || href.contains("skyline", ignoreCase = true) ||
+                        href.contains("purva", ignoreCase = true) || href.contains("cameo", ignoreCase = true)) {
+                        registrarUrl = href
+                    }
+                }
+
+                val registrarName = when {
+                    registrarUrl.contains("kfin", ignoreCase = true) -> "Kfin Technologies Ltd."
+                    registrarUrl.contains("bigshare", ignoreCase = true) -> "Bigshare Services Pvt.Ltd."
+                    registrarUrl.contains("linkintime", ignoreCase = true) || registrarUrl.contains("mufg", ignoreCase = true) -> "MUFG Intime India Pvt.Ltd."
+                    registrarUrl.contains("maashitla", ignoreCase = true) -> "Maashitla Securities Pvt.Ltd."
+                    registrarUrl.contains("skyline", ignoreCase = true) -> "Skyline Financial Services Pvt.Ltd."
+                    registrarUrl.contains("purva", ignoreCase = true) -> "Purva Sharegistry (India) Pvt.Ltd."
+                    registrarUrl.contains("cameo", ignoreCase = true) -> "Cameo Corporate Services Ltd."
+                    else -> if (registrarUrl.isNotBlank()) "Registrar" else ""
+                }
+
+                val isAllotmentAvailable = hasAllottedBadge
+
+                val calculatedStatus = com.example.ipotracker.utils.DateUtils.calculateEffectiveStatus(
+                    openDateStr = openDate,
+                    closeDateStr = closeDate,
+                    allotmentDateStr = allotmentDate,
+                    listingDateStr = listingDate,
+                    isAllotmentAvailable = isAllotmentAvailable
+                )
+
+                val finalStatus = if (isAllotmentAvailable && (calculatedStatus == IpoStatus.CLOSED || calculatedStatus == IpoStatus.ALLOTMENT_AVAILABLE)) {
+                    IpoStatus.ALLOTMENT_AVAILABLE
+                } else {
+                    calculatedStatus
+                }
+
+                val finalAllotmentStatus = if (isAllotmentAvailable) com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE else com.example.ipotracker.data.model.AllotmentStatus.PENDING
+
+                val allotmentInfo = if (registrarUrl.isNotBlank() || isAllotmentAvailable) {
+                    AllotmentInfo(
+                        registrarName = registrarName.ifBlank { "Registrar" },
+                        registrarUrl = registrarUrl.ifBlank { "https://ipostatus.kfintech.com/" },
+                        allotmentDate = allotmentDate,
+                        isAvailable = isAllotmentAvailable
+                    )
+                } else null
 
                 val cleanId = cleanName.lowercase().replace(Regex("[^a-z0-9]"), "-").trim('-')
                 if (cleanId.isNotEmpty() && destination.none { it.id == cleanId }) {
@@ -209,7 +270,7 @@ class ExchangeSyncEngine {
                             name = cleanName,
                             symbol = cleanName.split(" ").firstOrNull()?.uppercase() ?: "IPO",
                             category = category,
-                            status = IpoStatus.OPEN,
+                            status = finalStatus,
                             priceBandMin = price,
                             priceBandMax = price,
                             lotSize = lotSize,
@@ -217,11 +278,14 @@ class ExchangeSyncEngine {
                             issueSizeCr = issueSize,
                             openDate = openDate,
                             closeDate = closeDate,
+                            allotmentDate = allotmentDate,
                             listingDate = listingDate,
                             listingExchanges = exchange,
                             currentGmp = currentGmp ?: 0.0,
                             estimatedListingPrice = estListingPrice,
                             estimatedGainPercent = estGain,
+                            allotmentStatus = finalAllotmentStatus,
+                            allotmentInfo = allotmentInfo,
                             isDemoData = false
                         )
                     )
@@ -364,6 +428,10 @@ class ExchangeSyncEngine {
 
             if (existingIndex >= 0) {
                 val current = masterList[existingIndex]
+                val mergedAllotmentInfo = exchangeItem.allotmentInfo ?: current.allotmentInfo
+                val mergedAllotmentStatus = if (exchangeItem.allotmentStatus == com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE || current.allotmentStatus == com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE) com.example.ipotracker.data.model.AllotmentStatus.AVAILABLE else current.allotmentStatus
+                val mergedStatus = if (exchangeItem.status == IpoStatus.ALLOTMENT_AVAILABLE || current.status == IpoStatus.ALLOTMENT_AVAILABLE) IpoStatus.ALLOTMENT_AVAILABLE else (if (exchangeItem.status != IpoStatus.OPEN) exchangeItem.status else current.status)
+
                 masterList[existingIndex] = current.copy(
                     listingExchanges = if (current.listingExchanges.contains(exchangeItem.listingExchanges)) current.listingExchanges else "${current.listingExchanges}, ${exchangeItem.listingExchanges}",
                     currentGmp = if (exchangeItem.currentGmp > 0) exchangeItem.currentGmp else current.currentGmp,
@@ -371,6 +439,10 @@ class ExchangeSyncEngine {
                     estimatedGainPercent = if (exchangeItem.estimatedGainPercent > 0) exchangeItem.estimatedGainPercent else current.estimatedGainPercent,
                     openDate = if (current.openDate.isBlank()) exchangeItem.openDate else current.openDate,
                     closeDate = if (current.closeDate.isBlank()) exchangeItem.closeDate else current.closeDate,
+                    allotmentDate = if (current.allotmentDate.isBlank()) exchangeItem.allotmentDate else current.allotmentDate,
+                    allotmentInfo = mergedAllotmentInfo,
+                    allotmentStatus = mergedAllotmentStatus,
+                    status = mergedStatus,
                     isDemoData = false
                 )
             } else {

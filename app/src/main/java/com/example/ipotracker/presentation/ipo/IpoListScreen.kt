@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -67,6 +68,23 @@ fun IpoListScreen(
                 duration = SnackbarDuration.Short
             )
             viewModel.clearSyncError()
+        }
+    }
+
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = uiState.scrollIndex,
+        initialFirstVisibleItemScrollOffset = uiState.scrollOffset
+    )
+
+    // Scroll restoration for returned navigation (Issue 2)
+    LaunchedEffect(uiState.lastSelectedIpoId, uiState.filteredIpos) {
+        val targetId = uiState.lastSelectedIpoId
+        if (targetId != null && uiState.filteredIpos.isNotEmpty()) {
+            val targetIndex = uiState.filteredIpos.indexOfFirst { it.id == targetId }
+            if (targetIndex >= 0) {
+                listState.scrollToItem(targetIndex)
+            }
+            viewModel.clearLastSelectedIpo()
         }
     }
 
@@ -304,6 +322,7 @@ fun IpoListScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .testTag("ipo_lazy_column"),
@@ -313,7 +332,14 @@ fun IpoListScreen(
                         items(uiState.filteredIpos, key = { it.id }) { ipo ->
                             IpoCard(
                                 ipo = ipo,
-                                onIpoClick = onNavigateToDetail,
+                                onIpoClick = { ipoId ->
+                                    viewModel.saveNavigationState(
+                                        ipoId = ipoId,
+                                        scrollIndex = listState.firstVisibleItemIndex,
+                                        scrollOffset = listState.firstVisibleItemScrollOffset
+                                    )
+                                    onNavigateToDetail(ipoId)
+                                },
                                 onWatchlistToggle = { viewModel.toggleWatchlist(it) },
                                 onApplyClick = onNavigateToApplicationInfo,
                                 onAllotmentClick = onNavigateToAllotment,

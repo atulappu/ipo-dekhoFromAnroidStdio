@@ -507,111 +507,114 @@ fun IpoCard(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // 5. Action Buttons based on IPO Lifecycle State Machine:
-                // OPEN: [ VIEW ] [ SHARE ] [ APPLY ]
+                // OPEN: [ VIEW ] [ APPLY ]
                 // CLOSED + ALLOTMENT PENDING: [ VIEW ] [ SHARE ] [ WAITING ]
-                // ALLOTMENT AVAILABLE: [ VIEW ] [ SHARE ] [ ALLOTMENT ]
-                // LISTED: [ VIEW ] [ SHARE ] [ ALLOTMENT ] with [ WATCH LIVE ] centered below
-                val lifecycleState = ipo.lifecycleState
+                // CLOSED + ALLOTMENT AVAILABLE: [ VIEW ] [ SHARE ] [ ALLOTMENT ]
+                // LISTED + ALLOTMENT PENDING: [ VIEW ] [ SHARE ] [ WAITING ] with [ WATCH LIVE ] centered below
+                // LISTED + ALLOTMENT AVAILABLE: [ VIEW ] [ SHARE ] [ ALLOTMENT ] with [ WATCH LIVE ] centered below
+                val isListed = com.example.ipotracker.utils.DateUtils.isWatchLiveAvailable(ipo)
+                val isAllotmentAvailable = com.example.ipotracker.utils.DateUtils.getAllotmentStatus(ipo) == "AVAILABLE"
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    // VIEW Button (Same dimensions across all states)
-                    OutlinedButton(
-                        onClick = { onIpoClick(ipo.id) },
-                        shape = RoundedCornerShape(6.dp),
-                        border = BorderStroke(1.dp, BorderLight),
-                        colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .testTag("ipo_view_button_${ipo.id}")
+                if (ipo.lifecycleState == IpoLifecycleState.OPEN) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = "VIEW",
-                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1
-                        )
-                    }
+                        // VIEW Button
+                        OutlinedButton(
+                            onClick = { onIpoClick(ipo.id) },
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, BorderLight),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .testTag("ipo_view_button_${ipo.id}")
+                        ) {
+                            Text(
+                                text = "VIEW",
+                                style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                        }
 
-                    // SHARE Button (Same dimensions across all states)
-                    OutlinedButton(
-                        onClick = { shareIpo(context, ipo) },
-                        shape = RoundedCornerShape(6.dp),
-                        border = BorderStroke(1.dp, BorderLight),
-                        colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .testTag("ipo_share_button_${ipo.id}")
+                        // APPLY Button
+                        Button(
+                            onClick = { onApplyClick?.invoke(ipo.id) ?: onIpoClick(ipo.id) },
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryOrange,
+                                contentColor = Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .testTag("ipo_apply_button_${ipo.id}")
+                        ) {
+                            Text(
+                                text = "APPLY",
+                                style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = "SHARE",
-                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1
-                        )
-                    }
+                        // VIEW Button
+                        OutlinedButton(
+                            onClick = { onIpoClick(ipo.id) },
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, BorderLight),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .testTag("ipo_view_button_${ipo.id}")
+                        ) {
+                            Text(
+                                text = "VIEW",
+                                style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                        }
 
-                    // Third Action Button based on Lifecycle
-                    when (lifecycleState) {
-                        IpoLifecycleState.OPEN -> {
-                            // [ APPLY ] button
-                            OutlinedButton(
-                                onClick = { onApplyClick?.invoke(ipo.id) ?: onIpoClick(ipo.id) },
-                                shape = RoundedCornerShape(6.dp),
-                                border = BorderStroke(1.dp, BorderLight),
-                                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(36.dp)
-                                    .testTag("ipo_apply_button_${ipo.id}")
-                            ) {
-                                Text(
-                                    text = "APPLY",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1
-                                )
-                            }
+                        // SHARE Button
+                        OutlinedButton(
+                            onClick = { shareIpo(context, ipo) },
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, BorderLight),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp)
+                                .testTag("ipo_share_button_${ipo.id}")
+                        ) {
+                            Text(
+                                text = "SHARE",
+                                style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
+                            )
                         }
-                        IpoLifecycleState.CLOSED_ALLOTMENT_PENDING -> {
-                            // [ WAITING ] button (Gray background, dark gray/black text, disabled/non-clickable)
-                            Button(
-                                onClick = { /* Disabled / non-clickable */ },
-                                enabled = false,
-                                shape = RoundedCornerShape(6.dp),
-                                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                                colors = ButtonDefaults.buttonColors(
-                                    disabledContainerColor = Color(0xFFE2E8F0),
-                                    disabledContentColor = Color(0xFF475569)
-                                ),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(36.dp)
-                                    .testTag("ipo_waiting_button_${ipo.id}")
-                            ) {
-                                Text(
-                                    text = "WAITING",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 10.5.sp),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF475569),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                        IpoLifecycleState.ALLOTMENT_AVAILABLE, IpoLifecycleState.LISTED -> {
-                            // [ ALLOTMENT ] button (Green background, white text, clickable - redirects to official registrar portal)
+
+                        // Third Button: ALLOTMENT (Green, white text, clickable) or WAITING (Gray, disabled, non-clickable)
+                        if (isAllotmentAvailable) {
                             Button(
                                 onClick = {
                                     val regUrl = ipo.getEffectiveRegistrarUrl()
@@ -641,45 +644,69 @@ fun IpoCard(
                                     maxLines = 1
                                 )
                             }
+                        } else {
+                            Button(
+                                onClick = { /* Disabled / non-clickable - no action */ },
+                                enabled = false,
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                                colors = ButtonDefaults.buttonColors(
+                                    disabledContainerColor = Color(0xFFE2E8F0),
+                                    disabledContentColor = Color(0xFF475569)
+                                ),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(36.dp)
+                                    .testTag("ipo_waiting_button_${ipo.id}")
+                            ) {
+                                Text(
+                                    text = "WAITING",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 10.5.sp),
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF475569),
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
-                }
 
-                // If officially LISTED: ADD [ WATCH LIVE ] button centered below the first row
-                if (lifecycleState == IpoLifecycleState.LISTED) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Button(
-                            onClick = { onWatchLiveClick?.invoke(ipo.id) ?: onIpoClick(ipo.id) },
-                            shape = RoundedCornerShape(6.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = SecondaryBlue),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                            modifier = Modifier
-                                .fillMaxWidth(0.9f)
-                                .height(34.dp)
-                                .testTag("ipo_watch_live_button_${ipo.id}")
+                    // Directly below row 1: [ WATCH LIVE ] button ONLY if validated listing status is LISTED
+                    if (isListed) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            Button(
+                                onClick = { onWatchLiveClick?.invoke(ipo.id) ?: onIpoClick(ipo.id) },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = SecondaryBlue),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth(0.9f)
+                                    .height(34.dp)
+                                    .testTag("ipo_watch_live_button_${ipo.id}")
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF4ADE80))
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "WATCH LIVE",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.5.sp),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    letterSpacing = 0.5.sp
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF4ADE80))
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "WATCH LIVE",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.5.sp),
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
                             }
                         }
                     }

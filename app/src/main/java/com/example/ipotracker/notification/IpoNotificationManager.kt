@@ -33,6 +33,16 @@ object IpoNotificationManager {
     private val _notifications = MutableStateFlow<List<AppNotification>>(
         listOf(
             AppNotification(
+                id = "notif_orient_allotment",
+                title = "🎯 Allotment Out: Orient Cables (India) Ltd.",
+                message = "Orient Cables (India) Ltd. allotment status is now available on Kfin Technologies Ltd. Tap to check your application!",
+                type = NotificationType.ALLOTMENT_OUT,
+                targetIpoId = "ipo-orient-cables",
+                timestamp = System.currentTimeMillis() - 1800000,
+                badgeText = "ALLOTMENT",
+                eventKey = "ALLOTMENT_AVAILABLE:ipo-orient-cables"
+            ),
+            AppNotification(
                 id = "init_1",
                 title = "🎉 Notification System Active",
                 message = "You will receive real-time alerts for New IPOs, GMP shifts, Allotment status, and Admin notices every 5 minutes.",
@@ -177,12 +187,18 @@ object IpoNotificationManager {
         context: Context,
         ipoId: String,
         ipoName: String,
-        registrar: String
+        registrar: String,
+        eventKey: String = "ALLOTMENT_AVAILABLE:$ipoId"
     ) {
         if (!isAllotmentAlertsEnabled) return
 
-        val title = "🎯 Allotment OUT: $ipoName"
-        val message = "Allotment status is now available on $registrar. Tap to check your application!"
+        // Idempotent guard: do not notify or duplicate if event was already dispatched
+        if (_notifications.value.any { it.eventKey == eventKey }) {
+            return
+        }
+
+        val title = "🎯 Allotment Out: $ipoName"
+        val message = "$ipoName allotment status is now available on $registrar. Tap to check your application!"
 
         recordNotification(
             AppNotification(
@@ -190,7 +206,8 @@ object IpoNotificationManager {
                 message = message,
                 type = NotificationType.ALLOTMENT_OUT,
                 targetIpoId = ipoId,
-                badgeText = "ALLOTMENT"
+                badgeText = "ALLOTMENT",
+                eventKey = eventKey
             )
         )
 
@@ -282,7 +299,11 @@ object IpoNotificationManager {
 
     private fun recordNotification(notification: AppNotification) {
         _notifications.update { current ->
-            listOf(notification) + current.take(49)
+            if (notification.eventKey != null && current.any { it.eventKey == notification.eventKey }) {
+                current
+            } else {
+                listOf(notification) + current.take(49)
+            }
         }
     }
 

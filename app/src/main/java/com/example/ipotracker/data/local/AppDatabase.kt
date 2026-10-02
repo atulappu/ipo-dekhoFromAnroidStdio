@@ -23,7 +23,7 @@ import com.example.ipotracker.data.local.entity.WatchlistEntity
         IpoEntity::class,
         ExchangeConfigEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
